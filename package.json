@@ -1,0 +1,40 @@
+{
+  "name": "@zang3th/md-libs",
+  "version": "0.1.0",
+  "description": "Shared, tested application core for MD_Manager and MD_Calendar.",
+  "license": "MIT",
+  "author": "Tim Krueger (https://github.com/Zang3th)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Zang3th/MD_Libs.git"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./harness/build": "./src/harness/build.cjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "check:types": "tsc -p jsconfig.json",
+    "check:lint": "eslint . --max-warnings=0",
+    "test": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 \"test/**/*.test.js\"",
+    "verify": "npm run check:types && npm run check:lint && npm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.13.3",
+    "esbuild": "0.28.2",
+    "eslint": "9.39.5",
+    "globals": "16.5.0",
+    "typescript": "5.9.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}
