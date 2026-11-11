@@ -1,6 +1,5 @@
 # MD_Libs
 
-#Pin
 ## Build und Grundgerüst
 
 #Version
@@ -40,7 +39,7 @@ Beide Apps bauen mit esbuild, MD_Libs existiert als Paket. Noch kein Code ausgel
 - 0.2.0
 
 #Date
-- TBD
+- 11.11.2026
 
 #Info
 Logik ohne DOM: Undo, Speichern, Dateizugriff, Suche, Daten.
@@ -48,32 +47,33 @@ Jedes Modul aus dem MD_Manager-Code, erst in MD_Calendar, dann in MD_Manager.
 
 ### Undo und Speichern
 
-- [ ] `core/history` + `core/controls`
-- [ ] `platform/storage` mit Vertragssuite + Fakes
-- [ ] `platform/handles` + `platform/startup`
-- [ ] `platform/session` (Speichern, externe Änderungen, Konflikte)
+- [x] ~`core/history` + `core/controls`~
+- [x] ~`platform/storage` mit Vertragssuite + Fakes~
+- [x] ~`platform/handles` + `platform/startup`~
+- [x] ~`platform/session` (Speichern, externe Änderungen, Konflikte)~
 
 ### Suche und Daten
 
-- [ ] `core/search` + `core/inline` mit Differenztest gegen MD_Manager
-- [ ] `core/dates`
-- [ ] `core/text` + `core/markdown`, Calendar-Parser umstellen (Golden Files bitgleich)
+- [x] ~`core/search` + `core/inline` mit Differenztest gegen MD_Manager~
+- [x] ~`core/dates`~
+- [x] ~`core/text` + `core/markdown`, Calendar-Parser umstellen (Golden Files bitgleich)~
 
 ### Integration
 
-- [ ] MD_Calendar umstellen + doppelte Tests entfernen
-- [ ] MD_Manager umstellen, E2E + Baselines unverändert grün
+- [x] ~MD_Calendar umstellen + doppelte Tests entfernen~
+- [x] ~MD_Manager umstellen, E2E + Baselines unverändert grün~
 
+#Pin
 ## UI und Harness
 
 #Version
 - 0.3.0
 
 #Date
-- TBD
+- 11.11.2026
 
 #Info
-DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness. Danach sind die Dopplungen beseitigt.
+DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 
 ### UI
 

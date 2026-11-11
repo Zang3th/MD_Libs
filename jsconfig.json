@@ -7,7 +7,7 @@
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
     "types": ["node"],
     "maxNodeModuleJsDepth": 0,
     "skipLibCheck": true
@@ -18,5 +18,5 @@
     "test/**/*.js",
     "eslint.config.js"
   ],
-  "exclude": ["node_modules", "coverage"]
+  "exclude": ["node_modules", "coverage", "test/reference"]
 }

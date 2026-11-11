@@ -11,7 +11,11 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
+    "./core": "./src/core/index.js",
+    "./platform": "./src/platform/index.js",
     "./harness/build": "./src/harness/build.cjs",
+    "./harness/fakes": "./src/harness/fakes.cjs",
+    "./harness/storage-contract": "./src/harness/storage-contract.cjs",
     "./package.json": "./package.json"
   },
   "files": [

@@ -21,7 +21,7 @@ Versionen und Arbeitspakete: [Roadmap](Roadmap.md).
 - Beide Apps bündeln mit esbuild `app.js` und alle Imports zu `dist/app.js`, einem klassischen Skript mit Source Map; es läuft unter `file://`. `dist/` ist nicht eingecheckt.
 - Produktionsdateien der Apps sind ES-Module mit gemeinsamem Namespace (`window.MDManager`, `window.MDCalendar`). Nur `app.js` importiert Produktionsmodule, einmal und in der Reihenfolge domain, io, ui. Library-Module werden explizit importiert.
 - MD_Libs ist ein ESM-Paket ohne eigenen Build; Harness-Module sind CommonJS (`.cjs`). Die Apps beziehen den aktuellen `master` als Git-Abhängigkeit `github:Zang3th/MD_Libs#master`; `package-lock.json` hält den Commit fest, `npm update @zang3th/md-libs` holt den neuesten. Lokal `npm link ../MD_Libs`.
-- SortableJS: UMD-Build `sortablejs/Sortable.min.js`, von `app.js` zuerst importiert. dayjs (nur MD_Calendar) über npm.
+- SortableJS: UMD-Build `sortablejs/Sortable.min.js`, von `app.js` zuerst importiert. Keine Datumsbibliothek: Datumsrechnung und -anzeige liefert `core/dates`.
 - Fehlt `dist/app.js`, zeigt die HTML-Datei über `onerror` am Skript-Tag nur den Hinweis, `npm ci` und `npm run build` auszuführen.
 - Typen: JSDoc mit `tsc --checkJs` strict. Produktion `moduleResolution: Bundler`, `maxNodeModuleJsDepth: 0`; Harness `NodeNext`, `maxNodeModuleJsDepth: 1`.
 
@@ -74,63 +74,58 @@ Einstiegspunkte: `@zang3th/md-libs/core`, `/platform`, `/ui`, `/harness/<name>`.
 
 #### core/history
 
-Basis MD_Manager: `execute` (No-op bei `redo() === false`, Rollback bei Fehler), `commit`, `replaceCurrent`, `clear`, View-State vor/nach, Grenzen 100 Einträge / 8 MiB. Zusätzlich der Gespeichert-Abstand aus MD_Calendar.
+Basis MD_Manager: `execute` (No-op bei `redo() === false`, Rollback bei Fehler), `commit`, `replaceCurrent`, `clear`, View-State vor/nach, Grenzen 100 Einträge / 8 MiB. Zusätzlich der Gespeichert-Abstand aus MD_Calendar; er übersteht Trim, verworfene Redo-Zweige und `replaceCurrent`.
 
 ```js
 const h = history.create({ maxEntries, maxBytes });
 h.execute(action)  h.commit(action)  h.replaceCurrent(action)  h.clear()
-h.undo() / h.redo()               // → { label, viewState } | null
-h.canUndo  h.canRedo  h.undoLabel  h.redoLabel
-h.markSaved(position?)  h.unsaved // übersteht Trim und verworfene Redo-Zweige
-h.subscribe(listener)             // → unsubscribe
+h.undo() / h.redo()               // → { label, viewState, action } | null
+h.canUndo  h.canRedo  h.undoLabel  h.redoLabel  h.position
+h.markSaved(position?)  h.unsaved
 ```
 
 #### core/controls
 
-Zustand der Knöpfe Speichern, Undo, Redo aus `history` und `session`.
+Zustand der Knöpfe Speichern, Undo, Redo; Texte liefert die App.
 
 ```js
-controls.state({ history, session }, strings)
-// → { undo: { disabled, label }, redo: { disabled, label }, save: { dirty, count, label, conflict } }
+controls.state({ history, unsaved, conflict }, { undo: label => …, redo: label => …, save: (status, count) => … })
+// → { undo: { disabled, label }, redo: { disabled, label }, save: { status: "saved" | "unsaved" | "conflict", count, label } }
 ```
 
 #### core/text
 
 ```js
-text.split(source)              // → { lines, newline, bom, finalNewline }
-text.join(doc)                  // exakte Umkehrung von split
-text.findInvalidCharacter(src)  // → { line, column } | null
+text.split(source)    // → { lines, newline, bom, finalNewline }
+text.join(document)   // exakte Umkehrung von split
 text.escapeHtml(value)
-class MDLFormatError { line, column, code }   /** MDLFormatWarning: { line, kind, text } */
 ```
 
 #### core/markdown
 
-Zeilenscanner für den gemeinsamen Dialekt; kein CommonMark. Unbekannte Zeilen bleiben erhalten. Serializer bleiben in den Apps.
+Zeilenhilfen für den gemeinsamen Dialekt; Parser und Serializer bleiben in den Apps.
 
 ```js
-markdown.scan(lines)              // → heading | task | item | marker | blank | text, je mit Zeilennummer
-markdown.trailingTag(text)        // "Arzt #health" → { text: "Arzt", tag: "health" }
-markdown.keyBlocks(tokens, schema)// #Key-Blöcke: { Start: "single", Except: "list", Note: "prose" }
-markdown.sections(tokens, level)
+markdown.trailingTag("Arzt #health")                       // → { text: "Arzt", tag: "health" }
+markdown.keyBlocks(lines, { keys, prose: ["Note"] })       // → key | item | prose | unknown, je mit Index
 ```
 
 #### core/inline
 
+Grammatik des MD_Manager-Renderings; die Apps erzeugen daraus ihr HTML.
+
 ```js
-inline.parse(text)             // → text | strong | em | strike | code | link
-inline.plainText(text)         // ohne Markierungen; schneller Pfad ohne Marker
-inline.render(tokens, document)// DocumentFragment ohne innerHTML; Links nur http(s), mailto, tel
+inline.parse(text)      // → text | code | link (nur http/https) | strong | strike | em
+inline.plainText(text)  // ohne Markierungen; schneller Pfad ohne Marker
 ```
 
 #### core/search
 
-Scorer von MD_Manager (Teilfolge, Wortgrenzen, Smart Case, Positionen, Top-K mit Schwelle). Optionen für MD_Calendar: Diakritika, Mehrwortsuche. Die App liefert Felder, Gewichte und Tiebreak.
+Scorer von MD_Manager (Teilfolge, Wortgrenzen, Smart Case, Positionen, Top-K mit Schwelle, Narrowing). Optionen für MD_Calendar: Diakritika, Mehrwortsuche, Feldgewichte. Die App liefert Felder und Tiebreak.
 
 ```js
-const index = search.createIndex(items, { fields: [{ get, weight }], normalize: "case" | "diacritics" });
-index.update(items)
-index.query(text, { limit, tieBreak })   // → [{ item, score, field, positions }]
+const index = search.createIndex(items, { fields: [{ get, weight }], fold: "case" | "diacritics", words, tieBreak });
+index.query(text, { limit })   // → { results: [{ item, score, field, positions }], total }
 ```
 
 #### core/dates
@@ -138,60 +133,61 @@ index.query(text, { limit, tieBreak })   // → [{ item, score, field, positions
 Tagesschlüssel `YYYY-MM-DD`, keine Zeitzonen, keine Abhängigkeit.
 
 ```js
-dates.parse("10.11.2026")  format(key)  addDays(key, n)  diff(a, b)
-dates.isoWeek(key)  weekStart(key)  periodStart(key, "week" | "month" | "quarter" | "year")
-dates.parseRange("10.11.2026 - TBD")     // → { start, end | null }
+dates.parse("10.11.2026")   // auch YYYY-MM-DD und DD.MM.YY → { key, year, month, day, time } | null
+dates.format(key)  dates.today(now)  dates.toTime(key)  dates.fromTime(time)  dates.dayNumber(key)
+dates.addDays(key, n)  dates.diff(a, b)  dates.monthStart(key, n)  dates.weekStart(key)  dates.isoWeek(key)
+dates.formatPattern(key, "dddd, D. MMMM YYYY", { days, daysShort, months, monthsShort })   // Namen liefert die App; plattformunabhängig, kein Intl
 ```
 
 #### platform/storage
 
 ```js
 /** MDLStorageAdapter: { name, list(), read(file) → { text, stamp } | null, stat(file) → stamp | null,
- *                       write(file, text, expected) → stamp } */
+ *                       write(file, text, expected) → stamp, canCheck? } */
 storage.folder(directoryHandle, { files })
-storage.file(fileHandle)          // Einzeldatei (MD_Manager)
-storage.memory(files)             // Tests
-storage.missingApis(names)  storage.ensurePermission(handle, mode, { prompt })
+storage.file(fileHandle)          // Einzeldatei (MD_Manager); eine gelöschte Datei wirft NotFoundError
+storage.memory(files)             // Tests und Referenz
+storage.missingApis(window, names)  storage.ensurePermission(handle, mode, { query, prompt })
 class MDLStorageConflictError { file, text, stamp }
 ```
 
-Schreibvorgänge eines Adapters laufen über eine serialisierte Schlange. Stempel sind opake Strings; später `drive()`, `webdav()`.
+`expected` ist der Inhalt, den der Aufrufer auf der Platte erwartet (`null`: Datei darf nicht existieren, `undefined`: ohne Prüfung). Schreibvorgänge eines Adapters laufen über eine serialisierte Schlange. Stempel sind opake Strings (`lastModified:size`); später `drive()`, `webdav()`.
 
 #### platform/handles
 
 Gemerkte Handles in IndexedDB; gleiches Handle per `isSameEntry` zusammengeführt.
 
 ```js
-const store = handles.create({ database, limit });   // MD_Manager 5, MD_Calendar 1
-store.list()  store.get(id)  store.remember(handle, data)  store.forget(id)
+const store = handles.create({ indexedDB, database, store, version, limit });   // MD_Manager 5, MD_Calendar 1
+store.list()  store.find(handle)  store.remember(handle, existing => data)  store.forget(id)
 ```
 
 #### platform/session
 
-Speichern, externe Änderungen, Konflikte. Reine Logik mit injiziertem Adapter, Scheduler und Serialisierern.
+Speichern, externe Änderungen, Konflikte für die Dateien eines geöffneten Orts. Eine Sitzung pro Datei bzw. Ordner; `destroy()` beim Wechsel. Reine Logik mit injiziertem Adapter und Uhr; wann geprüft wird (Intervall, Fokus, Sichtbarkeit, offener Dialog), entscheidet die App.
 
 ```js
 const s = session.create({
-  adapter, history,
-  files: { "Calendar.md": { writable: true, serialize, load }, "Holidays.md": { writable: false, load } },
-  writeOrder, pollInterval: 2000, isBusy, scheduler,
-  dirty: "history" | "content"      // MD_Calendar | MD_Manager
+  adapter, initial,
+  files: { "Calendar.md": { serialize, load }, "Holidays.md": { writable: false, load } },
+  history: () => history,          // MD_Calendar: Zähler aus dem Verlauf; ohne: 1 bei geändertem Inhalt (MD_Manager)
+  order: () => [...], reloadWhenClean: true, contentCheckInterval: 30000, now
 });
-s.open()  s.save({ force })  s.check()  s.reload()  s.overwrite()  s.destroy()
-s.hasConflict  s.unsaved
-s.on("reloaded" | "conflict" | "saved" | "error", listener)
-s.installLeaveGuard()
+s.save(force)  s.check()  s.reload()  s.overwrite()  s.destroy()
+s.unsaved  s.hasConflict  s.conflicts
+s.on("change" | "conflict" | "blocked" | "saved" | "reloaded" | "checkError", listener)
 ```
 
-Regeln: erneuter Versuch, wenn sich nur der Stempel änderte; gelöschte Datei ist immer ein Konflikt; nur lesbare Dateien werden immer neu geladen; neuer Verlauf nach Reload; Sitzungs-Token gegen veraltete Antworten; unveränderter Inhalt gilt als gespeichert. Später: `rebase()` für Mehrgeräte-Konflikte.
+Regeln: Konflikt nur bei geändertem Inhalt (ein reiner Stempelwechsel nicht); gelöschte Datei im Ordner ist ein Konflikt, eine gelöschte Einzeldatei eine einmalige Fehlermeldung; nur lesbare Dateien werden immer neu geladen; geschriebene Dateien werden nachgeprüft; Speicheraufrufe während eines Speicherns bündeln sich; Sitzungs-Token und Revision verwerfen veraltete Antworten; unveränderter Inhalt gilt als gespeichert. Später: `rebase()` für Mehrgeräte-Konflikte.
 
 #### platform/startup
 
 ```js
-startup.check({ apis, cssToken, fonts, images })   // → { apis: [], resources: [] }
+startup.missingResources({ document, styles: { token, file }, fonts: [{ font, text, file }], images: [{ image, file }] })
+// → fehlende Dateien; fehlende APIs liefert storage.missingApis
 ```
 
-Die App ordnet das Ergebnis ihren Fehlercodes zu und ruft `notifications.fatal`.
+Die App ordnet das Ergebnis ihren Fehlercodes zu und blockiert den Start.
 
 #### platform/audio
 
@@ -275,9 +271,9 @@ Kontextmenü mit `menu`/`menuitem`, Pfeiltasten, Fokusrückgabe, Long-Press.
 | dom, menu | `clampToViewport`, `placeBelow`, Fokuslogik | Rect lesen, Style schreiben, `focus()` |
 | keymap | `parseCombo`, `match`, Escape-Stapel, `helpModel` | ein `keydown`-Listener |
 | audio | `schedule`, `plateImpulse` | Knoten erzeugen und trennen |
-| storage | Konfliktentscheidung, Schreibschlange | Handles, `createWritable` |
+| storage, session | Konfliktentscheidung, Schreibschlange, Sitzungsablauf | Handles, `createWritable` |
 | handles | Recent-Liste | IndexedDB-Transaktion |
-| startup | Ergebnis aus Messwerten | `getComputedStyle`, Fonts, Bilder |
+| startup | Liste fehlender Dateien | `getComputedStyle`, Fonts, Bilder |
 
 #### harness
 
@@ -285,8 +281,8 @@ Kontextmenü mit `menu`/`menuitem`, Pfeiltasten, Fokusrückgabe, Long-Press.
 |---|---|---|
 | `build` | `build(esbuild, { root })`, `bundleForTests(esbuild, { root, files, prelude })` | vorhanden |
 | `load-classic` | lädt Produktionsmodule für Unit-Tests in einen `vm`-Kontext | geplant |
-| `fakes` | Memory-Adapter, Scheduler/Uhr, FS-Access-Handles, IndexedDB, AudioContext | geplant |
-| `storage-contract` | Vertragssuite für jeden Speicher-Adapter | geplant |
+| `fakes` | Dateisystem (Ordner- und Datei-Handles), IndexedDB, Uhr, Gate, `flush`; AudioContext folgt mit `platform/audio` | vorhanden |
+| `storage-contract` | Vertragssuite für jeden Speicher-Adapter | vorhanden |
 | `architecture` | Regel-Engine des Architektur-Checkers; Apps liefern ihre Regeln | geplant |
 | `icons` | Abgleich Icon-Sprite ↔ SVG-Dateien | geplant |
 | `eslint` | Flat-Config-Fabrik inkl. Verbot von `.only`/`.skip` | geplant |
@@ -301,15 +297,9 @@ Verhaltensneutral, jeweils direkt vor dem Herauslösen des betroffenen Moduls.
 
 | Umbau | App | Ziel |
 |---|---|---|
-| Speichern und externe Änderungen aus `app.js` lösen | beide | `platform/session` |
-| `undoSystem` → `history` | MD_Manager | `core/history`, gleiche Semantik |
-| Zustand der Kopfzeilen-Knöpfe (`ui/header.js`, `updateUndoSystemControls`) | beide | `core/controls` |
 | Kürzel, Escape-Handler, Hilfe-Liste | beide | `ui/keymap` |
 | Platzierung schwebender Elemente | MD_Calendar | `ui/dom` |
 | rAF-Bündelung | beide | `dom.frame` |
-| Format-Parser (`*-format.js`) | MD_Calendar | `core/text` + `core/markdown`, Golden Files bitgleich |
-| Datumshilfen | beide | `core/dates` |
-| Suche | beide | `core/search` |
 | `Sortable.create` + Index-Rechnung | beide | `ui/sortable` |
 | Balken-Ziehen, Lasso | MD_Calendar | `ui/drag` |
 | Zwischenablage | beide | `dom.writeClipboard` |
@@ -334,15 +324,9 @@ Verhaltensneutral, jeweils direkt vor dem Herauslösen des betroffenen Moduls.
 
 | Heute | Tests | Künftig | Version |
 |---|---|---|---|
-| MD_Manager `undo-system.test.js`, MD_Calendar `history.test.js` | 3 + 3 | `core/history`; beide App-Dateien entfallen | 0.2.0 |
-| MD_Manager `files.test.js`, `file-conflicts.test.js` | 7 + 3 | `platform/storage`, `platform/handles`, Vertragssuite; in MD_Manager bleiben die app-eigenen Recent-Daten (Feature-Breite, Archiv-Optionen) | 0.2.0 |
-| MD_Calendar `storage.spec.js` | 1 E2E | Vertragssuite; entfällt | 0.2.0 |
-| MD_Manager `review-persistence.spec.js`, `external-changes.spec.js`, MD_Calendar `week.spec.js` (Konflikt, Reload) | 9 + 4 + 2 E2E | `platform/session`; je App bleiben ein Konfliktpfad (Reload/Overwrite) und ein Pfad für stilles Neuladen | 0.2.0 |
-| MD_Manager `search.test.js`, generischer Teil | ~10 | `core/search`; Index-Aufbau bleibt in MD_Manager | 0.2.0 |
-| MD_Calendar `search-import.test.js`, Suche | 1 | `core/search`; ICS-Import bleibt | 0.2.0 |
 | MD_Manager `sounds.test.js` | 1 | `platform/audio` | 0.3.0 |
-| Notification- und Startfehler-Logik aus MD_Manager-E2E | – | `ui/notifications`, `platform/startup`; die E2E-Tests bleiben als Verdrahtungsnachweis | 0.3.0 |
-| `architecture-checker.test.js` beider Apps | 6 + 5 | `harness/architecture` | 0.3.0 |
+| Notification-Logik aus MD_Manager-E2E | – | `ui/notifications`; die E2E-Tests bleiben als Verdrahtungsnachweis | 0.3.0 |
+| `architecture-checker.test.js` beider Apps | 7 + 5 | `harness/architecture` | 0.3.0 |
 | `icons.test.js` beider Apps | 3 + 2 | `harness/icons`; je App ein Aufruf | 0.3.0 |
 | `load-classic.js` beider Apps | – | `harness/load-classic` | 0.3.0 |
 | Index-Rechnung der Drag-Tests in MD_Manager | – | Unit-Test von `ui/sortable`; die E2E-Tests ziehen mit der echten Maus | 0.3.0 |
