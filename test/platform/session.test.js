@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { history as historyModule } from "../../src/core/index.js";
 import { session, storage } from "../../src/platform/index.js";
-import fakes from "../../src/harness/fakes.cjs";
+import fakes from "../../src/harness/testing.cjs";
 
 const { flush, gate } = fakes;
 
@@ -466,4 +466,125 @@ test("forced saves write only conflicted or changed files", async () => {
   assert.equal(await s.overwrite(), true);
   assert.equal(disk.text("Calendar.md"), "cal");
   assert.equal(disk.text("Contacts.md"), null);
+});
+
+/** A window with a manual interval, focus, visibility and beforeunload. */
+function pageWindow() {
+  const target = new EventTarget();
+  const documentTarget = Object.assign(new EventTarget(), { hidden: false });
+  /** @type {Map<number, () => void>} */
+  const timers = new Map();
+  let next = 0;
+  const window = Object.assign(target, {
+    document: documentTarget,
+    /** @param {() => void} callback @param {number} ms */
+    setInterval(callback, ms) {
+      timers.set(++next, callback);
+      window.intervals.push(ms);
+      return next;
+    },
+    /** @param {number} id */
+    clearInterval(id) { timers.delete(id); },
+    /** @type {number[]} */
+    intervals: [],
+    tick() { for (const callback of [...timers.values()]) callback(); },
+    timers
+  });
+  /** @param {string} type */
+  const fire = type => (type === "visibilitychange" ? documentTarget : target).dispatchEvent(new Event(type));
+  const leave = () => {
+    const event = /** @type {Event & { returnValue?: unknown }} */ (new Event("beforeunload", { cancelable: true }));
+    target.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  return { window: /** @type {any} */ (window), raw: window, fire, leave };
+}
+
+test("with a window, interval, focus and visibility check for external changes while visible and allowed", async () => {
+  const disk = fakes.fileSystem({ "P.md": "local" });
+  const adapter = storage.file(disk.fileHandle("P.md"));
+  const model = models({ "P.md": "local" });
+  const page = pageWindow();
+  let allowed = true;
+  const s = session.create({
+    adapter, files: { "P.md": model.file("P.md") }, initial: { "P.md": await adapter.read("P.md") },
+    window: page.window, shouldCheck: () => allowed, reloadWhenClean: true
+  });
+  const events = record(s);
+  assert.deepEqual(page.raw.intervals, [2000]);
+  disk.change("P.md", "a");
+  page.raw.document.hidden = true;
+  page.raw.tick();
+  page.fire("focus");
+  await flush();
+  assert.deepEqual(events, [], "hidden pages are not checked");
+  page.raw.document.hidden = false;
+  allowed = false;
+  page.fire("visibilitychange");
+  await flush();
+  assert.deepEqual(events, [], "shouldCheck can hold the checks");
+  allowed = true;
+  page.fire("visibilitychange");
+  await flush();
+  assert.deepEqual(events, ["reloaded:P.md", "change"]);
+  disk.change("P.md", "b");
+  page.fire("focus");
+  await flush();
+  disk.change("P.md", "c");
+  page.raw.tick();
+  await flush();
+  assert.equal(model.current["P.md"], "c");
+  s.destroy();
+  assert.equal(page.raw.timers.size, 0);
+  disk.change("P.md", "d");
+  page.fire("focus");
+  await flush();
+  assert.equal(model.current["P.md"], "c");
+});
+
+test("confirmLeave asks before leaving while unsaved or in conflict, not after destroy", async () => {
+  const disk = fakes.fileSystem({ "P.md": "local" });
+  const adapter = storage.file(disk.fileHandle("P.md"));
+  const model = models({ "P.md": "local" });
+  const page = pageWindow();
+  const s = session.create({
+    adapter, files: { "P.md": model.file("P.md") }, initial: { "P.md": await adapter.read("P.md") },
+    window: page.window, checkInterval: 500, confirmLeave: true
+  });
+  assert.deepEqual(page.raw.intervals, [500]);
+  assert.equal(page.leave(), false);
+  model.current["P.md"] = "edited";
+  assert.equal(page.leave(), true);
+  await s.save();
+  assert.equal(page.leave(), false);
+  disk.change("P.md", "external");
+  await s.check();
+  assert.equal(s.hasConflict, true);
+  assert.equal(page.leave(), true);
+  s.destroy();
+  assert.equal(page.leave(), false);
+
+  const quiet = pageWindow();
+  const plain = session.create({ adapter, files: { "P.md": models({ "P.md": "x" }).file("P.md") }, initial: {}, window: quiet.window });
+  assert.equal(quiet.leave(), false, "without confirmLeave nothing is asked");
+  plain.destroy();
+});
+
+test("open reads and loads every file, then creates the session; a failing load rejects", async () => {
+  const disk = fakes.fileSystem({ "Calendar.md": "cal", "Holidays.md": "hol" });
+  const adapter = storage.folder(/** @type {any} */ (disk.directory), { files: ["Calendar.md", "Backlog.md", "Holidays.md"] });
+  const model = models({ "Calendar.md": "", "Backlog.md": "", "Holidays.md": "" });
+  const files = {
+    "Calendar.md": model.file("Calendar.md"),
+    "Backlog.md": model.file("Backlog.md"),
+    "Holidays.md": model.file("Holidays.md", { writable: false })
+  };
+  const s = await session.open({ adapter, files });
+  assert.deepEqual(model.loads, ["Calendar.md=cal", "Backlog.md=null", "Holidays.md=hol"]);
+  assert.equal(s.unsaved, 0);
+  disk.change("Calendar.md", "cal2");
+  await s.check();
+  assert.equal(s.hasConflict, true, "the session knows what was read");
+
+  await assert.rejects(session.open({ adapter, files: { "Calendar.md": model.file("Calendar.md", { fail: () => true }) } }), /invalid format/);
 });

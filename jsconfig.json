@@ -16,7 +16,8 @@
     "src/**/*.js",
     "src/**/*.cjs",
     "test/**/*.js",
+    "tools/**/*.js",
     "eslint.config.js"
   ],
-  "exclude": ["node_modules", "coverage", "test/reference"]
+  "exclude": ["node_modules", "coverage", "test/consumer"]
 }

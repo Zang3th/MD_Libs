@@ -187,9 +187,98 @@ function gate() {
   return { promise, release, reject };
 }
 
+/**
+ * A Web Audio API double that records the graph: every created node, its connections, scheduled
+ * parameter values and whether it was started, stopped or disconnected. `finish()` on an oscillator
+ * fires its "ended" event. `AudioContext.instances` lists the created contexts.
+ */
+function audioContext() {
+  class Param {
+    constructor() {
+      this.value = 0;
+      /** @type {Array<[string, number, number]>} */
+      this.events = [];
+    }
+    /** @param {number} time */
+    cancelScheduledValues(time) { this.events.push(["cancel", 0, time]); }
+    /** @param {number} value @param {number} time */
+    setValueAtTime(value, time) { this.events.push(["set", value, time]); }
+    /** @param {number} value @param {number} time */
+    exponentialRampToValueAtTime(value, time) { this.events.push(["ramp", value, time]); }
+  }
+  class Node {
+    constructor() {
+      /** @type {unknown[]} */
+      this.connections = [];
+      this.disconnected = false;
+    }
+    /** @template T @param {T} node @returns {T} */
+    connect(node) { this.connections.push(node); return node; }
+    disconnect() { this.disconnected = true; }
+  }
+  class Gain extends Node {
+    constructor() { super(); this.gain = new Param(); }
+  }
+  class Convolver extends Node {
+    constructor() { super(); /** @type {unknown} */ this.buffer = null; }
+  }
+  class Oscillator extends Node {
+    constructor() {
+      super();
+      this.type = "";
+      this.frequency = new Param();
+      /** @type {Map<string, () => void>} */
+      this.listeners = new Map();
+      /** @type {number | null} */
+      this.startedAt = null;
+      /** @type {number | null} */
+      this.stoppedAt = null;
+    }
+    /** @param {string} name @param {() => void} listener */
+    addEventListener(name, listener) { this.listeners.set(name, listener); }
+    /** @param {number} time */
+    start(time) { this.startedAt = time; }
+    /** @param {number} [time] */
+    stop(time) {
+      if (this.stoppedAt !== null && time === undefined) throw new Error("already stopped");
+      this.stoppedAt = time ?? -1;
+    }
+    finish() { this.listeners.get("ended")?.(); }
+  }
+  class FakeAudioContext {
+    /** @type {FakeAudioContext[]} */
+    static instances = [];
+    constructor() {
+      this.currentTime = 0;
+      this.sampleRate = 8;
+      this.destination = new Node();
+      this.resumed = 0;
+      /** @type {Array<{ numberOfChannels: number, getChannelData(channel: number): Float32Array }>} */
+      this.buffers = [];
+      /** @type {Gain[]} */
+      this.gains = [];
+      /** @type {Oscillator[]} */
+      this.oscillators = [];
+      FakeAudioContext.instances.push(this);
+    }
+    async resume() { this.resumed++; }
+    /** @param {number} channels @param {number} frames */
+    createBuffer(channels, frames) {
+      const data = Array.from({ length: channels }, () => new Float32Array(frames));
+      const buffer = { numberOfChannels: channels, getChannelData: (/** @type {number} */ channel) => data[channel] };
+      this.buffers.push(buffer);
+      return buffer;
+    }
+    createConvolver() { return new Convolver(); }
+    createGain() { const gain = new Gain(); this.gains.push(gain); return gain; }
+    createOscillator() { const oscillator = new Oscillator(); this.oscillators.push(oscillator); return oscillator; }
+  }
+  return FakeAudioContext;
+}
+
 /** Lets pending microtasks and promise chains run. */
 function flush() {
   return new Promise(resolve => setTimeout(resolve, 0));
 }
 
-module.exports = { fileSystem, indexedDB, clock, gate, flush };
+module.exports = { fileSystem, indexedDB, audioContext, clock, gate, flush };

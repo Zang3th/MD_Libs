@@ -22,7 +22,14 @@
  * @property {boolean} [reloadWhenClean] Reload a changed writable file without asking when nothing is unsaved.
  * @property {number} [contentCheckInterval] While the stamp is unchanged, the content is read again only after this many ms.
  * @property {() => number} [now]
+ * @property {Window} [window] Checks for external changes every `checkInterval` ms, on window focus and when the
+ *   page becomes visible; never while the page is hidden. Without a window the app calls `check()` itself.
+ * @property {number} [checkInterval] Default 2000.
+ * @property {() => boolean} [shouldCheck] Skips an automatic check when it returns `false`.
+ * @property {boolean} [confirmLeave] Asks before the page is left while something is unsaved or in conflict. Needs `window`.
  */
+
+/** @typedef {Omit<MDLSessionOptions, "initial">} MDLSessionOpenOptions */
 
 /**
  * @typedef {{
@@ -74,7 +81,10 @@ function isConflict(error) {
  * @param {MDLSessionOptions} options
  * @returns {MDLSession}
  */
-export function create({ adapter, files, initial, history, order, reloadWhenClean = false, contentCheckInterval = 30000, now = Date.now }) {
+export function create({
+  adapter, files, initial, history, order, reloadWhenClean = false, contentCheckInterval = 30000, now = Date.now,
+  window, checkInterval = 2000, shouldCheck = () => true, confirmLeave = false
+}) {
   const names = Object.keys(files);
   const writable = names.filter(name => files[name].writable !== false);
   /** @type {Record<string, { disk: MDLStoredFile | null, external: MDLExternalVersion | null, saved: string, contentCheck: number }>} */
@@ -294,6 +304,20 @@ export function create({ adapter, files, initial, history, order, reloadWhenClea
     return true;
   }
 
+  const automatic = () => {
+    if (!window?.document.hidden && shouldCheck()) void check();
+  };
+  /** @param {BeforeUnloadEvent} event */
+  const beforeUnload = event => {
+    if (destroyed || (unsaved() === 0 && !hasConflict())) return;
+    event.preventDefault();
+    event.returnValue = "";
+  };
+  const timer = window ? window.setInterval(automatic, checkInterval) : 0;
+  window?.addEventListener("focus", automatic);
+  window?.document.addEventListener("visibilitychange", automatic);
+  if (confirmLeave) window?.addEventListener("beforeunload", beforeUnload);
+
   return {
     save,
     check,
@@ -306,6 +330,12 @@ export function create({ adapter, files, initial, history, order, reloadWhenClea
     destroy() {
       destroyed = true;
       token++;
+      if (window) {
+        window.clearInterval(timer);
+        window.removeEventListener("focus", automatic);
+        window.document.removeEventListener("visibilitychange", automatic);
+        window.removeEventListener("beforeunload", beforeUnload);
+      }
       for (const event of /** @type {Array<keyof MDLSessionEvents>} */ (Object.keys(listeners))) delete listeners[event];
     },
     on(event, listener) {
@@ -319,4 +349,22 @@ export function create({ adapter, files, initial, history, order, reloadWhenClea
       return writable.filter(name => state[name].external).map(name => ({ file: name, .../** @type {MDLExternalVersion} */ (state[name].external) }));
     }
   };
+}
+
+/**
+ * Reads every file through the adapter, applies it with `load` and creates the session over what was read.
+ * Rejects without a session when a read or a `load` fails.
+ * @param {MDLSessionOpenOptions} options
+ * @returns {Promise<MDLSession>}
+ */
+export async function open(options) {
+  const names = Object.keys(options.files);
+  const found = await Promise.all(names.map(name => options.adapter.read(name)));
+  /** @type {Record<string, MDLStoredFile | null>} */
+  const initial = {};
+  names.forEach((name, index) => {
+    initial[name] = found[index];
+    options.files[name].load(found[index]?.text ?? null);
+  });
+  return create({ ...options, initial });
 }

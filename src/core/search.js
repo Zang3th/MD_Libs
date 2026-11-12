@@ -8,6 +8,7 @@
 /**
  * @template T
  * @typedef {object} MDLSearchOptions
+ * @property {T[]} items
  * @property {Array<{ get: (item: T) => string, weight?: number }>} fields Searched texts per item; `weight` is added to a match in that field.
  * @property {MDLFold} [fold] `"case"` (default): smart case, an all-lowercase query ignores case and any uppercase
  *   character makes it case-sensitive. `"diacritics"`: always ignores case and diacritics; `ß` matches `ss`.
@@ -50,7 +51,7 @@ function foldDiacritics(text) {
  * Text prepared for matching: `lower` is searched case-insensitively, `original` provides the uppercase bonus.
  * @param {string} text @param {MDLFold} fold
  */
-export function prepare(text, fold = "case") {
+function prepare(text, fold = "case") {
   if (fold === "case") return { text, lower: foldCase(text), original: text };
   const lower = foldDiacritics(text);
   return { text, lower, original: lower.length === text.length ? text : lower };
@@ -62,7 +63,7 @@ export function prepare(text, fold = "case") {
  * @param {string} haystack @param {string} needle @param {string} original Same length as `haystack`; supplies the uppercase bonus.
  * @returns {{ score: number, positions: number[] } | null}
  */
-export function score(haystack, needle, original) {
+function score(haystack, needle, original) {
   const positions = new Array(needle.length);
   let cursor = 0;
   for (let index = 0; index < needle.length; index++) {
@@ -100,11 +101,10 @@ export function score(haystack, needle, original) {
  * Builds a search index. Field texts are prepared once; extending the previous query only rescores its
  * matches, which is exact because extending a subsequence query can only remove matches.
  * @template T
- * @param {T[]} items
  * @param {MDLSearchOptions<T>} options
  * @returns {MDLSearchIndex<T>}
  */
-export function createIndex(items, { fields, fold = "case", words = false, tieBreak = () => 0 }) {
+export function create({ items, fields, fold = "case", words = false, tieBreak = () => 0 }) {
   const entries = items.map(item => ({
     item,
     fields: fields.map(field => ({ ...prepare(field.get(item), fold), weight: field.weight || 0 }))

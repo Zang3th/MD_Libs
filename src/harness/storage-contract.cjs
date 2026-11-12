@@ -13,12 +13,11 @@ const assert = require("node:assert/strict");
 
 /**
  * Registers the storage adapter contract as `node:test` tests. Every adapter must pass it.
- * @param {string} name
- * @param {(files: Record<string, string>) => ContractSubject | Promise<ContractSubject>} setup
- *   Creates an adapter whose storage holds `files`. `"a.md"` is the file under test.
- * @param {{ missing?: "null" | "reject" }} [options] How reading a missing file behaves; a single-file adapter rejects.
+ * @param {{ name: string, setup: (files: Record<string, string>) => ContractSubject | Promise<ContractSubject>, missing?: "null" | "reject" }} options
+ *   `setup` creates an adapter whose storage holds `files`; `"a.md"` is the file under test.
+ *   `missing`: how reading a missing file behaves; a single-file adapter rejects.
  */
-function storageContract(name, setup, { missing = "null" } = {}) {
+function storageContract({ name, setup, missing = "null" }) {
   test(`${name}: read returns content and stamp, stat the same stamp`, async () => {
     const { adapter } = await setup({ "a.md": "one" });
     const read = await adapter.read("a.md");

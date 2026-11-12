@@ -6,8 +6,8 @@
 const path = require("node:path");
 
 /**
- * @typedef {{ root: string, entry?: string, outfile?: string }} MDLBuildOptions
- * @typedef {{ root: string, files: string[], prelude?: string }} MDLTestBundleOptions
+ * @typedef {{ esbuild: MDLEsbuild, root: string, entry?: string, outfile?: string }} MDLBuildOptions
+ * @typedef {{ esbuild: MDLEsbuild, root: string, files: string[], prelude?: string }} MDLTestBundleOptions
  * @typedef {{
  *   build(options: object): Promise<unknown>,
  *   buildSync(options: object): { outputFiles?: Array<{ text: string }> }
@@ -25,7 +25,7 @@ const shared = {
 
 /**
  * esbuild options for the application bundle.
- * @param {MDLBuildOptions} options
+ * @param {Omit<MDLBuildOptions, "esbuild">} options
  */
 function bundleOptions({ root, entry = "app.js", outfile = "dist/app.js" }) {
   return {
@@ -40,9 +40,9 @@ function bundleOptions({ root, entry = "app.js", outfile = "dist/app.js" }) {
 
 /**
  * Builds the application bundle and returns the absolute path of the written script.
- * @param {MDLEsbuild} esbuild @param {MDLBuildOptions} options
+ * @param {MDLBuildOptions} options
  */
-async function build(esbuild, options) {
+async function build({ esbuild, ...options }) {
   const resolved = bundleOptions(options);
   await esbuild.build(resolved);
   return path.join(options.root, resolved.outfile);
@@ -51,10 +51,10 @@ async function build(esbuild, options) {
 /**
  * Bundles the given production files in order for a vm context, so that unit tests can load
  * single modules with their imports. `prelude` is module code placed before the imports.
- * @param {MDLEsbuild} esbuild @param {MDLTestBundleOptions} options
+ * @param {MDLTestBundleOptions} options
  * @returns {string}
  */
-function bundleForTests(esbuild, { root, files, prelude = "" }) {
+function bundleForTests({ esbuild, root, files, prelude = "" }) {
   const imports = files.map(file => `import ${JSON.stringify(`./${file.replaceAll("\\", "/")}`)};`).join("\n");
   const result = esbuild.buildSync({
     ...shared,

@@ -4,7 +4,7 @@ import { search } from "../../src/core/index.js";
 
 /** @param {string[]} texts @param {Partial<import("../../src/core/search.js").MDLSearchOptions<string>>} [options] */
 function indexOf(texts, options = {}) {
-  return search.createIndex(texts, { fields: [{ get: text => text }], ...options });
+  return search.create({ items: texts, fields: [{ get: text => text }], ...options });
 }
 
 /** @param {import("../../src/core/search.js").MDLSearchIndex<string>} index @param {string} query @param {number} [limit] */
@@ -70,14 +70,8 @@ test("diacritics folding ignores case, accents and ß", () => {
 test("with words, every word must match some field and field weights rank the result", () => {
   /** @type {Array<{ title: string, note: string }>} */
   const items = [{ title: "Zahnarzt", note: "Kontrolle" }, { title: "Kontrolle", note: "beim Zahnarzt" }, { title: "Arzt", note: "" }];
-  const index = search.createIndex(items, { fields: [{ get: item => item.title, weight: 20 }, { get: item => item.note }], fold: "diacritics", words: true });
+  const index = search.create({ items, fields: [{ get: item => item.title, weight: 20 }, { get: item => item.note }], fold: "diacritics", words: true });
   assert.deepEqual(index.query("zahnarzt kontrolle").results.map(result => result.item.title), ["Zahnarzt", "Kontrolle"]);
   assert.deepEqual(index.query("arzt").results.map(result => [result.item.title, result.field]), [["Arzt", 0], ["Zahnarzt", 0], ["Kontrolle", 1]]);
   assert.equal(index.query("zahnarzt röntgen").total, 0);
-});
-
-test("prepare keeps positions on the original text where folding changes the length", () => {
-  assert.deepEqual(search.prepare("Ab", "case"), { text: "Ab", lower: "ab", original: "Ab" });
-  assert.deepEqual(search.prepare("Straße", "diacritics"), { text: "Straße", lower: "strasse", original: "strasse" });
-  assert.deepEqual(search.prepare("Äb", "diacritics").original, "Äb");
 });

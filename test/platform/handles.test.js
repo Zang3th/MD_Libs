@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { handles } from "../../src/platform/index.js";
-import fakes from "../../src/harness/fakes.cjs";
+import fakes from "../../src/harness/testing.cjs";
 
 /** @param {number} limit */
 function setup(limit) {

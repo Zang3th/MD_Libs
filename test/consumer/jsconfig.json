@@ -1,0 +1,4 @@
+{
+  "extends": "../../config/jsconfig.app.json",
+  "include": ["app.js"]
+}

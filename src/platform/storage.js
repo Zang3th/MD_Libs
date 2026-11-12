@@ -35,7 +35,7 @@ export class MDLStorageConflictError extends Error {
  * Version stamp of a `File`: modification time and size. `"0:0"` means the platform reported neither.
  * @param {{ lastModified?: number, size?: number }} file
  */
-export function stampOf(file) {
+function stampOf(file) {
   return `${file.lastModified || 0}:${file.size || 0}`;
 }
 
@@ -216,17 +216,6 @@ export function memory(files = {}) {
     failNextRead(/** @type {Error} */ error) { readFailure = error; },
     failNextWrite(/** @type {Error} */ error) { failure = error; }
   });
-}
-
-/**
- * Browser functions that are not available, by expression, for example `["window.showDirectoryPicker()"]`.
- * @param {object} scope Usually `window`.
- * @param {string[]} names Global objects, or picker functions (`show…`), for example `["showDirectoryPicker", "indexedDB"]`.
- */
-export function missingApis(scope, names) {
-  const globals = /** @type {Record<string, unknown>} */ (scope);
-  return names.filter(name => name.startsWith("show") ? typeof globals[name] !== "function" : globals[name] === undefined)
-    .map(name => name.startsWith("show") ? `window.${name}()` : name);
 }
 
 /**

@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { storage } from "../../src/platform/index.js";
-import fakes from "../../src/harness/fakes.cjs";
-import contract from "../../src/harness/storage-contract.cjs";
+import testing from "../../src/harness/testing.cjs";
 
-contract.storageContract("memory", files => {
+const { storageContract } = testing;
+const fakes = testing;
+
+storageContract({ name: "memory", setup: files => {
   const adapter = storage.memory(files);
   return {
     adapter,
@@ -15,9 +17,9 @@ contract.storageContract("memory", files => {
     failNextWrite(error) { if (error) adapter.failNextWrite(error); },
     failNextRead: adapter.failNextRead
   };
-});
+} });
 
-contract.storageContract("folder", files => {
+storageContract({ name: "folder", setup: files => {
   const disk = fakes.fileSystem(files);
   return {
     adapter: storage.folder(/** @type {any} */ (disk.directory), { files: ["a.md", "b.md"] }),
@@ -25,9 +27,9 @@ contract.storageContract("folder", files => {
     failNextWrite(error) { disk.hooks.failNextWrite = error ?? undefined; },
     failNextRead(error) { disk.hooks.failNextRead = error; }
   };
-});
+} });
 
-contract.storageContract("file", files => {
+storageContract({ name: "file", missing: "reject", setup: files => {
   const disk = fakes.fileSystem(files);
   return {
     adapter: storage.file(disk.fileHandle("a.md")),
@@ -35,7 +37,7 @@ contract.storageContract("file", files => {
     failNextWrite(error) { disk.hooks.failNextWrite = error ?? undefined; },
     failNextRead(error) { disk.hooks.failNextRead = error; }
   };
-}, { missing: "reject" });
+} });
 
 test("a folder lists only the configured files, sorted, and rethrows unexpected read errors", async () => {
   const disk = fakes.fileSystem({ "b.md": "", "a.md": "", "other.txt": "" });
@@ -63,17 +65,6 @@ test("a file adapter without getFile can only write unconditionally", async () =
   assert.equal(await adapter.write("a.md", "one"), "");
   assert.deepEqual(written, ["one"]);
   assert.equal(storage.memory().canCheck, undefined);
-});
-
-test("stamps combine modification time and size", () => {
-  assert.equal(storage.stampOf({ lastModified: 5, size: 3 }), "5:3");
-  assert.equal(storage.stampOf({}), "0:0");
-});
-
-test("missing APIs are reported as expressions", () => {
-  const scope = { showOpenFilePicker() {}, showSaveFilePicker: "not a function", indexedDB: {} };
-  assert.deepEqual(storage.missingApis(scope, ["showOpenFilePicker", "showSaveFilePicker", "showDirectoryPicker", "indexedDB", "caches"]),
-    ["window.showSaveFilePicker()", "window.showDirectoryPicker()", "caches"]);
 });
 
 test("permission is kept when granted and requested only when prompting is allowed", async () => {

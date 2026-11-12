@@ -50,3 +50,9 @@ test("missing resources are listed as styles, fonts, then images", async () => {
     images: [{ image: null, file: "none.svg" }, { image: image("broken"), file: "broken.svg" }, { image: image("pending-error"), file: "late.svg" }, { image: /** @type {any} */ ({}), file: "div.svg" }]
   }), ["styles.css", "a.woff2", "b.woff2", "none.svg", "broken.svg", "late.svg", "div.svg"]);
 });
+
+test("missing APIs are reported as expressions; names ending in () must be functions", () => {
+  const window = { showOpenFilePicker() {}, showSaveFilePicker: "not a function", indexedDB: {} };
+  assert.deepEqual(startup.missingApis({ window, apis: ["showOpenFilePicker()", "showSaveFilePicker()", "showDirectoryPicker()", "indexedDB", "caches"] }),
+    ["window.showSaveFilePicker()", "window.showDirectoryPicker()", "caches"]);
+});

@@ -44,3 +44,15 @@ export async function missingResources({ document, styles, fonts = [], images = 
     ...[...fonts, ...images].filter((_, index) => !loaded[index]).map(resource => resource.file)
   ];
 }
+
+/**
+ * Browser APIs that are not available, as expressions for an error message.
+ * @param {{ window: object, apis: string[] }} options
+ *   `apis` are globals; a name ending in `()` must be a function: `["showDirectoryPicker()", "indexedDB"]`.
+ * @returns {string[]} e.g. `["window.showDirectoryPicker()", "indexedDB"]`
+ */
+export function missingApis({ window, apis }) {
+  const globals = /** @type {Record<string, unknown>} */ (window);
+  return apis.filter(api => api.endsWith("()") ? typeof globals[api.slice(0, -2)] !== "function" : globals[api] === undefined)
+    .map(api => api.endsWith("()") ? `window.${api}` : api);
+}

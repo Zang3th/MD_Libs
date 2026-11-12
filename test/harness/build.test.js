@@ -42,7 +42,7 @@ test("bundle options produce one classic script with a linked source map", () =>
 
 test("build writes a bundle that runs as a classic script without modules", async () => {
   const root = project();
-  const file = await build(esbuild, { root });
+  const file = await build({ esbuild, root });
   assert.equal(file, path.join(root, "dist/app.js"));
   assert.ok(fs.existsSync(`${file}.map`));
   const code = fs.readFileSync(file, "utf8");
@@ -54,15 +54,15 @@ test("build writes a bundle that runs as a classic script without modules", asyn
 
 test("test bundles load only the requested files, in order, after the prelude", () => {
   const root = project();
-  const code = bundleForTests(esbuild, { root, files: ["domain/numbers.js"], prelude: "window.order = ['prelude'];" });
+  const code = bundleForTests({ esbuild, root, files: ["domain/numbers.js"], prelude: "window.order = ['prelude'];" });
   const context = vm.createContext({ window: {} });
   vm.runInContext(code, context);
   assert.equal(context.window.App.numbers.four(), 4);
   assert.equal(context.window.App.started, undefined);
   assert.deepEqual([...context.window.order], ["prelude"]);
-  assert.match(bundleForTests(esbuild, { root, files: ["domain\\numbers.js"] }), /app\.numbers/);
+  assert.match(bundleForTests({ esbuild, root, files: ["domain\\numbers.js"] }), /app\.numbers/);
 });
 
 test("test bundles report missing output", () => {
-  assert.throws(() => bundleForTests({ build: async () => ({}), buildSync: () => ({ outputFiles: [] }) }, { root: "/", files: [] }), /no output/);
+  assert.throws(() => bundleForTests({ esbuild: { build: async () => ({}), buildSync: () => ({ outputFiles: [] }) }, root: "/", files: [] }), /no output/);
 });

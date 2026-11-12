@@ -8,7 +8,7 @@ const noFocusedTests = {
 
 export default [
   {
-    ignores: ["node_modules/**", "coverage/**", "test/reference/**"]
+    ignores: ["node_modules/**", "coverage/**"]
   },
   {
     linterOptions: { reportUnusedDisableDirectives: "error" }
@@ -32,8 +32,12 @@ export default [
     languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: globals.node }
   },
   {
-    files: ["test/**/*.js", "eslint.config.js"],
+    files: ["test/**/*.js", "tools/**/*.js", "eslint.config.js"],
     languageOptions: { ecmaVersion: 2022, sourceType: "module", globals: globals.node },
     rules: { "no-restricted-syntax": ["error", noFocusedTests] }
+  },
+  {
+    files: ["test/consumer/**/*.js"],
+    languageOptions: { globals: globals.browser }
   }
 ];

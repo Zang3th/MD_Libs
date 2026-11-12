@@ -48,3 +48,36 @@ test("patterns format a day with the names the app supplies", () => {
   assert.equal(dates.formatPattern("2026-09-01", "dd, DD.MM.YYYY · D. MMM · M", names), "Di, 01.09.2026 · 1. Sept. · 9");
   assert.equal(dates.formatPattern("2026-03-08", "MMMM 0000", names), "März 0000");
 });
+
+test("periodStart finds the first day of a day, week, month, quarter and year, and of year blocks", () => {
+  assert.equal(dates.periodStart("2026-11-12", "day"), "2026-11-12");
+  assert.equal(dates.periodStart("2026-11-15", "week"), "2026-11-09");
+  assert.equal(dates.periodStart("2026-11-12", "month"), "2026-11-01");
+  assert.equal(dates.periodStart("2026-11-12", "quarter"), "2026-10-01");
+  assert.equal(dates.periodStart("2026-03-31", "quarter"), "2026-01-01");
+  assert.equal(dates.periodStart("2026-11-12", "year"), "2026-01-01");
+  assert.equal(dates.periodStart("2026-11-12", "year", 5), "2025-01-01");
+  assert.equal(dates.periodStart("2026-11-12", "year", 10), "2020-01-01");
+  assert.equal(dates.periodStart("2026-11-12", "month", 10), "2026-11-01", "blocks apply to years only");
+});
+
+test("addPeriod moves by periods and lets the day of the month overflow", () => {
+  assert.equal(dates.addPeriod("2026-12-30", "day", 3), "2027-01-02");
+  assert.equal(dates.addPeriod("2026-11-09", "week", -2), "2026-10-26");
+  assert.equal(dates.addPeriod("2026-11-01", "month", 2), "2027-01-01");
+  assert.equal(dates.addPeriod("2026-01-31", "month", 1), "2026-03-03");
+  assert.equal(dates.addPeriod("2026-10-01", "quarter", 1), "2027-01-01");
+  assert.equal(dates.addPeriod("2024-02-29", "year", 1), "2025-03-01");
+  assert.equal(dates.addPeriod("2025-01-01", "year", -5), "2020-01-01");
+});
+
+test("periods also work on UTC times, beyond the years a key can write", () => {
+  const time = dates.toTime("2026-11-12");
+  assert.equal(dates.periodStart(time, "quarter"), dates.toTime("2026-10-01"));
+  assert.equal(dates.addPeriod(time, "week", 1), dates.toTime("2026-11-19"));
+  assert.equal(dates.addPeriod(time, "month", -1), dates.toTime("2026-10-12"));
+  const ancient = Date.UTC(-300, 6, 15);
+  assert.equal(dates.periodStart(ancient, "year", 10), Date.UTC(-300, 0, 1));
+  assert.equal(dates.addPeriod(Date.UTC(-300, 0, 1), "year", 10), Date.UTC(-290, 0, 1));
+  assert.equal(dates.periodStart(ancient, "day"), ancient);
+});

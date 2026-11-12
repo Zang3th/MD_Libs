@@ -77,6 +77,63 @@ export function weekStart(key) {
   return fromTime(time - ((new Date(time).getUTCDay() || 7) - 1) * dayMs);
 }
 
+/** @typedef {"day" | "week" | "month" | "quarter" | "year"} MDLPeriodUnit */
+
+/** @param {number} time @param {MDLPeriodUnit} unit @param {number} years */
+function periodStartTime(time, unit, years) {
+  const date = new Date(time);
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = Date.UTC(year, month, date.getUTCDate());
+  if (unit === "day") return day;
+  if (unit === "week") return day - ((new Date(day).getUTCDay() || 7) - 1) * dayMs;
+  if (unit === "month") return Date.UTC(year, month, 1);
+  if (unit === "quarter") return Date.UTC(year, Math.floor(month / 3) * 3, 1);
+  return Date.UTC(Math.floor(year / years) * years, 0, 1);
+}
+
+/** @param {number} time @param {MDLPeriodUnit} unit @param {number} count */
+function addPeriodTime(time, unit, count) {
+  if (unit === "day" || unit === "week") return time + count * (unit === "week" ? 7 : 1) * dayMs;
+  const date = new Date(time);
+  const months = count * (unit === "month" ? 1 : unit === "quarter" ? 3 : 12);
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, date.getUTCDate());
+}
+
+/**
+ * First day of the period that contains `day`: the day itself, its Monday, the first of its month, quarter or
+ * year. `years` groups years into blocks that start at a multiple of `years` (5 → 2025, 2030, …); it applies to
+ * the unit `year` only. Takes a day key or a UTC time and returns the same kind; times also reach years a key
+ * cannot write.
+ * @overload
+ * @param {string} day @param {MDLPeriodUnit} unit @param {number} [years] @returns {string}
+ */
+/**
+ * @overload
+ * @param {number} day @param {MDLPeriodUnit} unit @param {number} [years] @returns {number}
+ */
+/** @param {string | number} day @param {MDLPeriodUnit} unit @param {number} [years] @returns {string | number} */
+export function periodStart(day, unit, years = 1) {
+  return typeof day === "number" ? periodStartTime(day, unit, years) : fromTime(periodStartTime(toTime(day), unit, years));
+}
+
+/**
+ * `day` moved by `count` periods; negative counts move back. Months, quarters and years keep the day of the
+ * month and let it overflow like `Date` does: 2026-01-31 plus one month is 2026-03-03. Applied to a period
+ * start, the result is the start of the period `count` periods later. Takes a day key or a UTC time and
+ * returns the same kind.
+ * @overload
+ * @param {string} day @param {MDLPeriodUnit} unit @param {number} count @returns {string}
+ */
+/**
+ * @overload
+ * @param {number} day @param {MDLPeriodUnit} unit @param {number} count @returns {number}
+ */
+/** @param {string | number} day @param {MDLPeriodUnit} unit @param {number} count @returns {string | number} */
+export function addPeriod(day, unit, count) {
+  return typeof day === "number" ? addPeriodTime(day, unit, count) : fromTime(addPeriodTime(toTime(day), unit, count));
+}
+
 /** ISO-8601 week number: weeks run Monday to Sunday and belong to the year of their Thursday. @param {string} key */
 export function isoWeek(key) {
   const time = toTime(key);

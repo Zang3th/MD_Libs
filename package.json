@@ -1,6 +1,6 @@
 {
   "name": "@zang3th/md-libs",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "description": "Shared, tested application core for MD_Manager and MD_Calendar.",
   "license": "MIT",
   "author": "Tim Krueger (https://github.com/Zang3th)",
@@ -13,22 +13,25 @@
   "exports": {
     "./core": "./src/core/index.js",
     "./platform": "./src/platform/index.js",
+    "./ui": "./src/ui/index.js",
     "./harness/build": "./src/harness/build.cjs",
-    "./harness/fakes": "./src/harness/fakes.cjs",
-    "./harness/storage-contract": "./src/harness/storage-contract.cjs",
+    "./harness/testing": "./src/harness/testing.cjs",
+    "./harness/checks": "./src/harness/checks.cjs",
     "./package.json": "./package.json"
   },
   "files": [
-    "src"
+    "src",
+    "config"
   ],
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
-    "check:types": "tsc -p jsconfig.json",
+    "check:types": "tsc -p jsconfig.json && tsc -p test/consumer/jsconfig.json",
     "check:lint": "eslint . --max-warnings=0",
     "test": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 \"test/**/*.test.js\"",
-    "verify": "npm run check:types && npm run check:lint && npm test"
+    "verify": "npm run check:types && npm run check:lint && npm test",
+    "stats": "node tools/project-stats.js"
   },
   "devDependencies": {
     "@eslint/js": "9.39.5",
@@ -36,6 +39,7 @@
     "esbuild": "0.28.2",
     "eslint": "9.39.5",
     "globals": "16.5.0",
+    "happy-dom": "21.0.4",
     "typescript": "5.9.3"
   },
   "allowScripts": {
