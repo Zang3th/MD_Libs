@@ -16,7 +16,7 @@ MD_Libs is the shared, tested application core of several Markdown apps like MD_
 - Every decision is a pure function over plain data. Code that touches the DOM, layout, Web Audio, IndexedDB, or the File System Access API contains no branching logic of its own; browser objects are passed in, never taken from globals.
 - MD_Libs has no runtime dependency. Tools such as SortableJS, esbuild, TypeScript or `AudioContext` are passed in by the caller.
 - Harness modules are CommonJS (`.cjs`) so that the applications' CommonJS tooling can require them. They are published as three entry points: `harness/build`, `harness/testing`, `harness/checks`.
-- `config/` holds the compiler options the applications' jsconfig files extend. `test/consumer/` type-checks a consumer through the package name; keep it in step with the public API.
+- `config/` holds the compiler options the applications' jsconfig files extend. `types/` holds the generated declarations of the entry points; regenerate them with `node tools/declarations.js` after changing a module's JSDoc. `test/consumer/` type-checks an app and a harness consumer against an installed copy of the package; keep it in step with the public API.
 
 ## Tests
 

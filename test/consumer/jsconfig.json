@@ -1,4 +1,4 @@
 {
-  "extends": "../../config/jsconfig.app.json",
+  "extends": "./node_modules/@zang3th/md-libs/config/jsconfig.app.json",
   "include": ["app.js"]
 }

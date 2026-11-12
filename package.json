@@ -11,23 +11,42 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./core": "./src/core/index.js",
-    "./platform": "./src/platform/index.js",
-    "./ui": "./src/ui/index.js",
-    "./harness/build": "./src/harness/build.cjs",
-    "./harness/testing": "./src/harness/testing.cjs",
-    "./harness/checks": "./src/harness/checks.cjs",
+    "./core": {
+      "types": "./types/core/index.d.ts",
+      "default": "./src/core/index.js"
+    },
+    "./platform": {
+      "types": "./types/platform/index.d.ts",
+      "default": "./src/platform/index.js"
+    },
+    "./ui": {
+      "types": "./types/ui/index.d.ts",
+      "default": "./src/ui/index.js"
+    },
+    "./harness/build": {
+      "types": "./types/harness/build.d.cts",
+      "default": "./src/harness/build.cjs"
+    },
+    "./harness/testing": {
+      "types": "./types/harness/testing.d.cts",
+      "default": "./src/harness/testing.cjs"
+    },
+    "./harness/checks": {
+      "types": "./types/harness/checks.d.cts",
+      "default": "./src/harness/checks.cjs"
+    },
     "./package.json": "./package.json"
   },
   "files": [
     "src",
-    "config"
+    "config",
+    "types"
   ],
   "engines": {
     "node": ">=22.12"
   },
   "scripts": {
-    "check:types": "tsc -p jsconfig.json && tsc -p test/consumer/jsconfig.json",
+    "check:types": "tsc -p jsconfig.json && node tools/declarations.js --check && node tools/check-consumer.js",
     "check:lint": "eslint . --max-warnings=0",
     "test": "node --test --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=95 --test-coverage-branches=90 --test-coverage-functions=95 \"test/**/*.test.js\"",
     "verify": "npm run check:types && npm run check:lint && npm test",
