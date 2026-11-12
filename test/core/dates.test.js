@@ -7,6 +7,8 @@ test("parsing accepts ISO, DD.MM.YYYY and DD.MM.YY and rejects days that do not 
   assert.equal(dates.parse("2026-11-10")?.key, "2026-11-10");
   assert.equal(dates.parse("01.02.26")?.key, "2026-02-01");
   assert.equal(dates.parse("29.02.2028")?.key, "2028-02-29");
+  assert.equal(dates.parse("0100-01-01")?.key, "0100-01-01", "years below 1000 keep four digits");
+  assert.equal(dates.parse("31.12.9999")?.key, "9999-12-31");
   for (const invalid of ["29.02.2026", "31.04.2026", "00.01.2026", "1.1.2026", "2026-13-01", "TBD", ""]) assert.equal(dates.parse(invalid), null, invalid);
 });
 
@@ -15,6 +17,7 @@ test("keys convert to times, day numbers and DD.MM.YYYY and back", () => {
   assert.equal(dates.fromTime(Date.UTC(2026, 0, 31, 23)), "2026-01-31");
   assert.equal(dates.dayNumber("1970-01-11"), 10);
   assert.equal(dates.format("2026-03-04"), "04.03.2026");
+  assert.equal(dates.format("0100-01-01"), "01.01.0100", "years keep four digits");
   assert.equal(dates.today(new Date(2026, 10, 10, 23, 59)), "2026-11-10");
 });
 
@@ -24,6 +27,8 @@ test("day arithmetic crosses months, years and daylight-saving changes", () => {
   assert.equal(dates.addDays("2026-03-01", -1), "2026-02-28");
   assert.equal(dates.diff("2026-10-24", "2026-10-26"), 2);
   assert.equal(dates.diff("2026-10-26", "2026-10-24"), -2);
+  assert.equal(dates.diff("2024-02-28", "2024-03-01"), 2, "a leap day counts");
+  assert.equal(dates.diff("0100-01-01", "9999-12-31"), 3615899, "the whole range a key can write");
   assert.equal(dates.monthStart("2026-11-30"), "2026-11-01");
   assert.equal(dates.monthStart("2026-11-30", 2), "2027-01-01");
   assert.equal(dates.monthStart("2026-01-15", -1), "2025-12-01");

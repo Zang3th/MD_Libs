@@ -50,6 +50,19 @@ test("results are capped while the total counts every match", () => {
   assert.equal(index.query("alpha").results.length, 40);
 });
 
+test("a capped query returns the prefix of the full ranking, also for ties and after narrowing", () => {
+  const texts = [...Array.from({ length: 50 }, (_, count) => `Match ${String(count).padStart(2, "0")}`), "Ma tch", "match", "M a t c h"];
+  const options = { tieBreak: (/** @type {string} */ left, /** @type {string} */ right) => right.localeCompare(left) };
+  const full = indexOf(texts, options).query("match", { limit: 100 });
+  for (const limit of [1, 2, 50, 51, 52]) {
+    const narrowed = indexOf(texts, options);
+    narrowed.query("mat", { limit });
+    const limited = narrowed.query("match", { limit });
+    assert.equal(limited.total, full.total);
+    assert.deepEqual(limited.results, full.results.slice(0, limit), String(limit));
+  }
+});
+
 test("narrowing extended queries and resetting on other or empty queries keep full-scan results", () => {
   const texts = ["format", "form", "for", "bold", "warning", "forward"];
   const narrowed = indexOf(texts);

@@ -23,7 +23,7 @@ function fixture(t, files) {
 const entry = modules => `import "lib/core";\n${modules.map(file => `import "./${file}";\n`).join("")}${header}`;
 
 const valid = {
-  "domain/a.js": `import "lib/core";\n${header}// fetch("x") in a comment and "require(x)" in a string are no code\n`,
+  "domain/a.js": `import "lib/core";\n${header}// fetch("x") and document in a comment and "require(x) document" in a string are no code\n`,
   "io/b.js": header,
   "ui/c.js": `import "lib/ui/x";\n${header}`,
   "app.js": entry(["domain/a.js", "io/b.js", "ui/c.js"]),
@@ -54,7 +54,7 @@ const without = (files, names) => Object.fromEntries(Object.entries(files).filte
 /** @param {string[]} violations @param {string} text */
 const has = (violations, text) => violations.some(violation => violation.includes(text));
 
-test("a correctly layered application passes", t => {
+test("a correctly layered application passes; comments and strings are no code", t => {
   assert.deepEqual(run(fixture(t, valid)), []);
 });
 
@@ -82,8 +82,8 @@ test("wiring: every module once, only modules, layer order, app.js required", t 
   assert.deepEqual(run(fixture(t, without(valid, ["domain/a.js", "io/b.js", "ui/c.js", "app.js"]))), []);
 });
 
-test("files in layers: only JavaScript, no symbolic links", t => {
-  const root = fixture(t, { ...valid, "ui/notes.txt": "x" });
+test("files in layers: found in nested folders, only JavaScript, no symbolic links", t => {
+  const root = fixture(t, { ...valid, "ui/notes.txt": "x", "domain/nested/d.js": `${header}document.title;\n` });
   try {
     fs.symlinkSync(path.join(root, "io/b.js"), path.join(root, "ui/link.js"));
   } catch {
@@ -91,6 +91,7 @@ test("files in layers: only JavaScript, no symbolic links", t => {
   }
   const violations = run(root);
   assert.ok(has(violations, "ui/notes.txt: ARCH-FILES-002"));
+  assert.ok(has(violations, "domain/nested/d.js: APP-DOMAIN-001"));
   if (fs.existsSync(path.join(root, "ui/link.js"))) assert.ok(has(violations, "ui/link.js: ARCH-FILES-001"));
 });
 

@@ -146,3 +146,6 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 ### Bugs und Verbesserungen
 
 - [x] ~Generierte Deklarationen in `types/` ergänzen + Konsumentenprüfung gegen installierte Kopie~
+- [x] ~Tests: Tagesschlüssel über den ganzen Bereich 0100–9999, Jahre unter 1000 vierstellig~
+- [x] ~Tests: begrenzte Suche liefert den Anfang der vollen Rangfolge, auch bei Gleichständen und nach Narrowing~
+- [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
