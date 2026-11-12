@@ -134,3 +134,15 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 - [x] ~MD_Calendar + MD_Manager umstellen~
 - [x] ~README, Plan + AGENTS aktualisieren~
 - [x] ~Weitere Punkte in MD_Calendar + MD_Manager umstellen, E2E + Baselines unverändert grün~
+
+## App-Integration
+
+#Version
+- 0.5.0
+
+#Date
+- 12.11.2026
+
+### Bugs und Verbesserungen
+
+- [x] ~Generierte Deklarationen in `types/` ergänzen + Konsumentenprüfung gegen installierte Kopie~
