@@ -370,8 +370,6 @@ npm run verify
 
 ### Stats
 
-`npm run stats` counts the source lines without blank and comment-only lines, and the tests.
-
 <table>
   <thead>
     <tr>
