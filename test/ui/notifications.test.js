@@ -24,6 +24,42 @@ test("text is compacted and shortened; bodies with values flatten for copying", 
   assert.equal(notifications.fullText("plain"), "plain");
 });
 
+test("the text tag highlights interpolated strings, keeps numbers plain and turns line breaks into parts", () => {
+  const name = "Work";
+  assert.deepEqual(notifications.text`${name} has ${3} files.\nOpen ${"Work"}.`, [
+    { value: "Work" }, " has ", "3", " files.", { lineBreak: true }, "Open ", { value: "Work" }, "."
+  ]);
+  assert.deepEqual(notifications.text`Plain`, ["Plain"]);
+  assert.equal(notifications.fullText(notifications.text`A\nB ${"C"}`), "A\nB C");
+  const parts = notifications.text`Use ${notifications.control("New")} or ${notifications.key("Ctrl+N")}.`;
+  assert.deepEqual(parts, ["Use ", { control: "New" }, " or ", { key: "Ctrl+N" }, "."]);
+  assert.equal(notifications.fullText(parts), "Use New or Ctrl+N.");
+  assert.deepEqual(notifications.text`${{ other: 1 }}`, ["[object Object]"]);
+});
+
+test("controls render as a control and shortcuts as one kbd per key", () => {
+  const { container, stack } = setup();
+  stack.show("info", "Saved", notifications.text`Undo with ${notifications.key("Ctrl+Z")} or ${notifications.control("Undo")}.`);
+  const text = /** @type {HTMLElement} */ (container.querySelector(".notification-text"));
+  assert.equal(text.querySelector(".notification-control")?.textContent, "Undo");
+  assert.equal(text.querySelector(".notification-keys")?.innerHTML, "<kbd>Ctrl</kbd>+<kbd>Z</kbd>");
+  assert.equal(text.textContent, "Undo with Ctrl+Z or Undo.");
+});
+
+test("titles take highlighted parts; line breaks render as breaks; copying flattens the title", async () => {
+  const { window, container, stack } = setup();
+  /** @type {string[]} */
+  const copied = [];
+  Object.defineProperty(window.navigator, "clipboard", { configurable: true, value: { writeText: async (/** @type {string} */ text) => { copied.push(text); } } });
+  stack.show("error", notifications.text`${"A.md"} not saved`, notifications.text`Kept.\nTry again.`, { code: "APP-1" });
+  const element = /** @type {HTMLElement} */ (container.firstElementChild);
+  assert.equal(element.querySelector(".notification-title .notification-value")?.textContent, "A.md");
+  assert.equal(element.querySelector(".notification-text")?.innerHTML, "Kept.<br>Try again.");
+  /** @type {HTMLButtonElement} */ (element.querySelector(".notification-copy-action")).click();
+  await settle(window);
+  assert.match(copied[0], /A\.md not saved/);
+});
+
 test("trimming drops the oldest dismissible notifications until the stack fits", () => {
   const stack = [{ height: 40, persistent: true }, { height: 40, persistent: false }, { height: 40, persistent: false }, { height: 40, persistent: false }];
   assert.deepEqual(notifications.planTrim(stack, 10, 1000), []);

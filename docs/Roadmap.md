@@ -94,7 +94,6 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 - [x] ~Zeilenbilanz messen~
 - [x] ~Docs + README aller drei Repos aktualisieren~
 
-#Pin
 ## Einheitliche Schnittstellen
 
 #Version
@@ -135,13 +134,19 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 - [x] ~README, Plan + AGENTS aktualisieren~
 - [x] ~Weitere Punkte in MD_Calendar + MD_Manager umstellen, E2E + Baselines unverändert grün~
 
+#Pin
 ## App-Integration
 
 #Version
 - 0.5.0
 
 #Date
-- 12.11.2026
+- 12.11.2026 - TBD
+
+### Allgemeines
+
+- [x] ~AGENTS: Zweck von MD_Libs auf künftige Apps erweitert~
+- [x] ~README + Deklarationen aktualisieren~
 
 ### Bugs und Verbesserungen
 
@@ -149,3 +154,16 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 - [x] ~Tests: Tagesschlüssel über den ganzen Bereich 0100–9999, Jahre unter 1000 vierstellig~
 - [x] ~Tests: begrenzte Suche liefert den Anfang der vollen Rangfolge, auch bei Gleichständen und nach Narrowing~
 - [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
+
+### Module
+
+- [x] ~`core/json` (versionierte JSON-Dokumente, stabile Schlüsselreihenfolge)~
+- [x] ~`platform/jsonFile` (Read-Modify-Write eines JSON-Dokuments im Adapter) + `platform/device` (ID des Browserprofils)~
+- [x] ~`ui/recent` (zuletzt geöffnet für die Startseite) + `ui/segmented` (Auswahl + Indikator)~
+
+### Schnittstellen
+
+- [x] ~`storage.probe` (`granted`, `denied`, `missing`) + `storage.fingerprint` (SHA-256)~
+- [x] ~`startup.reloadFlag` (Startseite statt letztem Dokument nach einem Reload)~
+- [x] ~`notifications.text` als Template-Tag, Zeilenumbrüche + hervorgehobene Werte auch im Titel~
+- [x] ~`build({ define })` für Konstanten wie `APP_VERSION`~

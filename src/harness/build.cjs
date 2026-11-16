@@ -6,7 +6,8 @@
 const path = require("node:path");
 
 /**
- * @typedef {{ esbuild: MDLEsbuild, root: string, entry?: string, outfile?: string }} MDLBuildOptions
+ * @typedef {{ esbuild: MDLEsbuild, root: string, entry?: string, outfile?: string, define?: Record<string, string> }} MDLBuildOptions
+ *   `define` replaces global identifiers with JSON expressions, e.g. `{ APP_VERSION: JSON.stringify(version) }`.
  * @typedef {{ esbuild: MDLEsbuild, root: string, files: string[], prelude?: string }} MDLTestBundleOptions
  * @typedef {{
  *   build(options: object): Promise<unknown>,
@@ -27,14 +28,15 @@ const shared = {
  * esbuild options for the application bundle.
  * @param {Omit<MDLBuildOptions, "esbuild">} options
  */
-function bundleOptions({ root, entry = "app.js", outfile = "dist/app.js" }) {
+function bundleOptions({ root, entry = "app.js", outfile = "dist/app.js", define }) {
   return {
     ...shared,
     absWorkingDir: root,
     entryPoints: [entry],
     outfile,
     sourcemap: /** @type {const} */ ("linked"),
-    logLevel: /** @type {const} */ ("warning")
+    logLevel: /** @type {const} */ ("warning"),
+    ...(define ? { define } : {})
   };
 }
 

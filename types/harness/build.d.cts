@@ -1,8 +1,12 @@
+/**
+ * `define` replaces global identifiers with JSON expressions, e.g. `{ APP_VERSION: JSON.stringify(version) }`.
+ */
 export type MDLBuildOptions = {
     esbuild: MDLEsbuild;
     root: string;
     entry?: string;
     outfile?: string;
+    define?: Record<string, string>;
 };
 export type MDLTestBundleOptions = {
     esbuild: MDLEsbuild;
@@ -22,7 +26,8 @@ export type MDLEsbuild = {
  * esbuild options for the application bundle.
  * @param {Omit<MDLBuildOptions, "esbuild">} options
  */
-export function bundleOptions({ root, entry, outfile }: Omit<MDLBuildOptions, "esbuild">): {
+export function bundleOptions({ root, entry, outfile, define }: Omit<MDLBuildOptions, "esbuild">): {
+    define?: Record<string, string>;
     absWorkingDir: string;
     entryPoints: string[];
     outfile: string;

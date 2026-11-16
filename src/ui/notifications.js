@@ -1,7 +1,12 @@
 import { frame, writeClipboard } from "./internal.js";
 
 /** @typedef {"info" | "warning" | "error"} MDLSeverity */
-/** @typedef {string | Array<string | { value: string }>} MDLNotificationBody Parts as `{ value }` are highlighted. */
+/**
+ * @typedef {string | { value: string } | { control: string } | { key: string } | { lineBreak: true }} MDLNotificationPart
+ *   `value`: a name the user gave (entry, folder, file), highlighted. `control`: a button or function of the app,
+ *   shown like a control. `key`: a shortcut such as `Ctrl+Z`, shown as keys. `lineBreak`: starts a new line.
+ */
+/** @typedef {string | MDLNotificationPart[]} MDLNotificationBody */
 
 /**
  * @typedef {object} MDLNotificationStrings
@@ -52,7 +57,45 @@ export function readableText(value, maxLength) {
 
 /** @param {MDLNotificationBody} body */
 export function fullText(body) {
-  return typeof body === "string" ? body : body.map(part => typeof part === "string" ? part : part.value).join("");
+  if (typeof body === "string") return body;
+  return body.map(part => typeof part === "string" ? part : "value" in part ? part.value : "control" in part ? part.control : "key" in part ? part.key : "\n").join("");
+}
+
+/** A button or function of the app inside a notification text. @param {string} label @returns {MDLNotificationPart} */
+export function control(label) {
+  return { control: label };
+}
+
+/** A shortcut inside a notification text, e.g. `key("Ctrl+Z")`. @param {string} keys @returns {MDLNotificationPart} */
+export function key(keys) {
+  return { key: keys };
+}
+
+/**
+ * Notification text as a template literal: interpolated strings become highlighted values, parts from
+ * `control` and `key` stay as they are, other values (numbers) become plain text, and a line break in the template
+ * starts a new line.
+ * ```js
+ * text`${name} has no ${"App.json"}.\nSet it up with ${control("New")} or ${key("Ctrl+N")}.`
+ * ```
+ * @param {TemplateStringsArray} strings @param {...unknown} values
+ * @returns {MDLNotificationPart[]}
+ */
+export function text(strings, ...values) {
+  /** @type {MDLNotificationPart[]} */
+  const parts = [];
+  strings.forEach((literal, index) => {
+    literal.split("\n").forEach((line, lineIndex) => {
+      if (lineIndex) parts.push({ lineBreak: true });
+      if (line) parts.push(line);
+    });
+    if (index >= values.length) return;
+    const value = values[index];
+    if (typeof value === "string") parts.push({ value });
+    else if (typeof value === "object" && value !== null && ("control" in value || "key" in value)) parts.push(/** @type {MDLNotificationPart} */ (value));
+    else parts.push(String(value));
+  });
+  return parts;
 }
 
 /**
@@ -87,7 +130,7 @@ export function planTrim(stack, gap, capacity) {
  * @property {number} [maxTextLength]
  * @property {string} [defaultCode]
  * @property {() => void} [block] Disables the application for `fatal`.
- * @property {{ title: string, body: string, codes: { error: string, rejection: string }, details(kind: "error" | "rejection", value: unknown): string }} [globalErrors]
+ * @property {{ title: MDLNotificationBody, body: MDLNotificationBody, codes: { error: string, rejection: string }, details(kind: "error" | "rejection", value: unknown): string }} [globalErrors]
  *   Reports uncaught errors and unhandled rejections as errors.
  */
 
@@ -173,24 +216,40 @@ export function create({
     }
   }
 
+  /** @param {HTMLElement} element @param {MDLNotificationBody} body */
+  function appendParts(element, body) {
+    for (const part of typeof body === "string" ? [body] : body) {
+      if (typeof part === "string") element.append(readableText(part, maxTextLength));
+      else if ("value" in part || "control" in part) {
+        const value = document.createElement("span");
+        value.className = "value" in part ? "notification-value" : "notification-control";
+        value.textContent = readableText("value" in part ? part.value : part.control, maxTextLength);
+        element.append(value);
+      } else if ("key" in part) {
+        // Each key of a combination is its own <kbd>, as in shortcut lists: Ctrl + Z.
+        const keys = document.createElement("kbd");
+        keys.className = "notification-keys";
+        part.key.split("+").forEach((name, index) => {
+          if (index) keys.append("+");
+          const single = document.createElement("kbd");
+          single.textContent = name;
+          keys.append(single);
+        });
+        element.append(keys);
+      } else element.append(document.createElement("br"));
+    }
+    return element;
+  }
+
   /** @param {MDLNotificationBody} body */
   function bodyText(body) {
     const text = document.createElement("div");
     text.className = "notification-text";
-    for (const part of typeof body === "string" ? [body] : body) {
-      if (typeof part === "string") text.append(readableText(part, maxTextLength));
-      else {
-        const value = document.createElement("span");
-        value.className = "notification-value";
-        value.textContent = readableText(part.value, maxTextLength);
-        text.append(value);
-      }
-    }
-    return text;
+    return appendParts(text, body);
   }
 
   /**
-   * @param {MDLSeverity} severity @param {string} title @param {MDLNotificationBody} body
+   * @param {MDLSeverity} severity @param {MDLNotificationBody} title @param {MDLNotificationBody} body
    * @param {MDLNotificationOptions} [options]
    * @returns {MDLNotificationHandle}
    */
@@ -216,7 +275,7 @@ export function create({
     }
     const titleElement = document.createElement("span");
     titleElement.className = "notification-title";
-    titleElement.textContent = title;
+    appendParts(titleElement, title);
     heading.append(titleElement);
     const controls = document.createElement("div");
     controls.className = "notification-controls";
@@ -232,7 +291,7 @@ export function create({
     let copyButton = null;
     if (error) {
       const button = iconButton("clipboard", strings.copy, " notification-copy-action");
-      button.addEventListener("click", () => { void copy(notification, button, strings.copyText(code, title, fullText(options.details ?? body))); });
+      button.addEventListener("click", () => { void copy(notification, button, strings.copyText(code, fullText(title), fullText(options.details ?? body))); });
       copyButton = button;
     }
     if (persistent) {
@@ -297,7 +356,7 @@ export function create({
 
   /**
    * Blocks the application and shows why.
-   * @param {string} title @param {MDLNotificationBody} body @param {{ details?: MDLNotificationBody, code?: string }} [options]
+   * @param {MDLNotificationBody} title @param {MDLNotificationBody} body @param {{ details?: MDLNotificationBody, code?: string }} [options]
    */
   function fatal(title, body, options = {}) {
     block();

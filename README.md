@@ -7,25 +7,30 @@ ES modules, no build, tested with `node:test` only.
 
 ## Modules
 
-| Layer        | Module          | Purpose                                              |
-| ------------ | --------------- | ---------------------------------------------------- |
-| **core**     | `history`       | Undo/redo, saved-state distance, button states       |
-|              | `markdown`      | Lines, `#Key` blocks, tags, inline, invalid chars    |
-|              | `search`        | Fuzzy search with ranking and match positions        |
-|              | `dates`         | Day keys, arithmetic, periods, ISO weeks, formatting |
-| **platform** | `storage`       | Folder, file and memory adapters with version check  |
-|              | `handles`       | Remembered handles in IndexedDB                      |
-|              | `session`       | Opening, saving, external changes, conflicts         |
-|              | `startup`       | Checks for browser APIs, styles, fonts, images       |
-|              | `audio`         | Synthesized UI sounds                                |
-| **ui**       | `notifications` | Messages with codes, details and actions             |
-|              | `tooltips`      | Tooltips for `data-tooltip`                          |
-|              | `keymap`        | Shortcuts as data, text-field detection              |
-|              | `sortable`      | Defaults and drop index for SortableJS               |
-|              | `popover`       | Placement and closing of floating elements           |
-| **harness**  | `build`         | Bundles an app into `dist/app.js`                    |
-|              | `testing`       | Fakes, storage contract, module loader for unit tests |
-|              | `checks`        | Architecture rules, icons, ESLint config, LoC report |
+| Layer        | Module          | Purpose                                                                 |
+| ------------ | --------------- | ----------------------------------------------------------------------- |
+| **core**     | `history`       | Undo/redo, saved-state distance, button states                          |
+|              | `markdown`      | Lines, `#Key` blocks, tags, inline, invalid chars                       |
+|              | `search`        | Fuzzy search with ranking and match positions                           |
+|              | `dates`         | Day keys, arithmetic, periods, ISO weeks, formatting                    |
+|              | `json`          | Versioned JSON documents with a stable key order                        |
+| **platform** | `storage`       | Folder, file and memory adapters with version check; probe, fingerprint |
+|              | `handles`       | Remembered handles in IndexedDB                                         |
+|              | `jsonFile`      | Read-modify-write of a JSON document in an adapter                      |
+|              | `device`        | A persistent ID for this browser profile                                |
+|              | `session`       | Opening, saving, external changes, conflicts                            |
+|              | `startup`       | Checks for browser APIs, styles, fonts, images; reload flag             |
+|              | `audio`         | Synthesized UI sounds                                                   |
+| **ui**       | `notifications` | Messages with codes, details and actions                                |
+|              | `tooltips`      | Tooltips for `data-tooltip`                                             |
+|              | `keymap`        | Shortcuts as data, text-field detection                                 |
+|              | `sortable`      | Defaults and drop index for SortableJS                                  |
+|              | `popover`       | Placement and closing of floating elements                              |
+|              | `recent`        | List of recently opened documents for a start page                      |
+|              | `segmented`     | Selection and indicator of a segmented control                          |
+| **harness**  | `build`         | Bundles an app into `dist/app.js`                                       |
+|              | `testing`       | Fakes, storage contract, module loader for unit tests                   |
+|              | `checks`        | Architecture rules, icons, ESLint config, LoC report                    |
 
 ## Install
 
@@ -165,6 +170,21 @@ dates.formatPattern("2026-11-10", "dddd, D. MMMM", germanNames);
 
 Also `format`, `today`, `diff`, `weekStart`, `monthStart`, `toTime`, `fromTime`, `dayNumber`.
 
+#### `json`
+
+Versioned JSON documents an app writes for itself. Every document has an integer `format`; unknown fields stay.
+
+```js
+json.read(text, { format: 1 });
+// → { value, error: null | "unreadable" | "newer" }
+
+json.stringify(value, { order: {
+  "": ["format", "devices"],   // these keys first, others follow
+  devices: "sorted",           // all keys alphabetically
+  "devices.*": ["name"]        // every value of devices
+} });  // two spaces, final line break
+```
+
 ### platform
 
 #### `storage`
@@ -181,6 +201,33 @@ const { text } = await folder.read("Calendar.md");
 await folder.write("Calendar.md", updated, text);
 
 await storage.ensurePermission(directoryHandle, "readwrite");  // → true
+
+// A remembered handle may point to a deleted or moved entry.
+await storage.probe(handle, "readwrite", { prompt: false });
+// → "granted" | "denied" | "missing"
+
+await storage.fingerprint(text, { subtle: crypto.subtle });
+// → "sha256-ba7816bf…"
+```
+
+#### `jsonFile`
+
+A `json` document in a storage adapter. Updates run one after another; a missing file is created, an unreadable one replaced, a newer format left untouched.
+
+```js
+const state = jsonFile.create({
+  adapter, name: "App.json", format: 1,
+  initial: () => ({ format: 1 }), order, unreadable: () => warn()
+});
+await state.update(document => ({ ...document, opened: now }));
+// → false when a newer app version wrote the file
+```
+
+#### `device`
+
+```js
+device.id({ storage: localStorage, key: "app-device", randomUUID: () => crypto.randomUUID() });
+// → the same ID on every call in this browser profile
 ```
 
 #### `handles`
@@ -232,6 +279,11 @@ await startup.missingResources({
   images: [{ image: document.querySelector(".logo"), file: "logo.svg" }]
 });
 // → ["fonts/Inter.woff2"] if it did not load
+
+// Before a reload: skip reopening the last document once.
+const skip = startup.reloadFlag({ storage: sessionStorage, key: "app-skip", window });
+skip.set();   // expires after 2 s if the reload is cancelled
+skip.take();  // → true once after the reload
 ```
 
 #### `audio`
@@ -265,6 +317,9 @@ const messages = notifications.create({
 });
 
 messages.show("info", "File saved", [{ value: "Project.md" }, " saved."]);
+// The text tag: strings are highlighted, numbers plain, \n starts a new line; also for titles.
+// control() marks a button or function of the app, key() a shortcut (one <kbd> per key).
+messages.show("warning", notifications.text`${name} not found`, notifications.text`It was moved.\nOpen it with ${notifications.control("Open")} or ${notifications.key("Ctrl+O")}.`);
 messages.show("warning", "File changed", "", {
   persistent: true,
   actions: [{ label: "Reload", run: reload }]
@@ -326,11 +381,33 @@ const menu = popover.create({
 button.addEventListener("click", () => menu.toggle());
 ```
 
+#### `recent`
+
+The list of a start page: rows with icon, name and time, each with a remove button. The app handles the clicks.
+
+```js
+recent.render({
+  list, items,                         // [{ id, name, openedAt }], newest first
+  format: time => formatted(time),
+  icon: name => svg[name],             // "item", "remove"
+  strings: { empty: "No recent files", remove: name => `Remove ${name}` }
+});
+// rows: button.recent-open[data-recent=id], button.recent-remove[data-forget=id]
+```
+
+#### `segmented`
+
+```js
+segmented.select({ buttons, selected: 1, thumb });  // aria-pressed, indicator at 100%
+segmented.select({ buttons: tabs, selected: 0, attribute: "aria-selected" });
+```
+
 ### harness
 
 ```js
 const { build } = require("@zang3th/md-libs/harness/build");
 await build({ esbuild, root });  // app.js → dist/app.js
+await build({ esbuild, root, define: { APP_VERSION: JSON.stringify(version) } });
 
 const testing = require("@zang3th/md-libs/harness/testing");
 testing.fileSystem({ "a.md": "text" });

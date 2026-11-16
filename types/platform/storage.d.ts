@@ -50,6 +50,29 @@ export function ensurePermission(handle: {
     prompt?: boolean;
 }): Promise<boolean>;
 /**
+ * Whether a remembered handle can be used now: `granted`; `denied` without permission; `missing` when its folder or
+ * file was deleted, moved or renamed since. A handle outlives its entry, so only reading from it tells.
+ * @param {Parameters<typeof ensurePermission>[0] & ({ entries(): AsyncIterable<unknown> } | { getFile(): Promise<unknown> })} handle
+ * @param {"read" | "readwrite"} mode
+ * @param {{ prompt?: boolean }} [options] `prompt: false` never asks the user.
+ * @returns {Promise<"granted" | "denied" | "missing">}
+ */
+export function probe(handle: Parameters<typeof ensurePermission>[0] & ({
+    entries(): AsyncIterable<unknown>;
+} | {
+    getFile(): Promise<unknown>;
+}), mode: "read" | "readwrite", { prompt }?: {
+    prompt?: boolean;
+}): Promise<"granted" | "denied" | "missing">;
+/**
+ * SHA-256 of a text as `sha256-<hex>`: identifies stored content independently of file times and clocks.
+ * @param {string} text
+ * @param {{ subtle: Pick<SubtleCrypto, "digest"> }} options `crypto.subtle` of the page.
+ */
+export function fingerprint(text: string, { subtle }: {
+    subtle: Pick<SubtleCrypto, "digest">;
+}): Promise<string>;
+/**
  * Version-checked text storage. Every adapter implements the same contract
  * (`harness/storage-contract`), so sessions work unchanged on a folder, a single file or memory.
  *

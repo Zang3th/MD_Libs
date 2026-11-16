@@ -229,3 +229,34 @@ export async function ensurePermission(handle, mode, { query = true, prompt = tr
   if (query && handle.queryPermission && await handle.queryPermission({ mode }) === "granted") return true;
   return prompt ? await handle.requestPermission({ mode }) === "granted" : false;
 }
+
+/**
+ * Whether a remembered handle can be used now: `granted`; `denied` without permission; `missing` when its folder or
+ * file was deleted, moved or renamed since. A handle outlives its entry, so only reading from it tells.
+ * @param {Parameters<typeof ensurePermission>[0] & ({ entries(): AsyncIterable<unknown> } | { getFile(): Promise<unknown> })} handle
+ * @param {"read" | "readwrite"} mode
+ * @param {{ prompt?: boolean }} [options] `prompt: false` never asks the user.
+ * @returns {Promise<"granted" | "denied" | "missing">}
+ */
+export async function probe(handle, mode, { prompt = true } = {}) {
+  try {
+    if (!await ensurePermission(handle, mode, { prompt })) return "denied";
+    if ("entries" in handle) {
+      for await (const entry of handle.entries()) { void entry; break; }
+    } else await handle.getFile();
+    return "granted";
+  } catch (error) {
+    if (isMissing(error)) return "missing";
+    throw error;
+  }
+}
+
+/**
+ * SHA-256 of a text as `sha256-<hex>`: identifies stored content independently of file times and clocks.
+ * @param {string} text
+ * @param {{ subtle: Pick<SubtleCrypto, "digest"> }} options `crypto.subtle` of the page.
+ */
+export async function fingerprint(text, { subtle }) {
+  const digest = new Uint8Array(await subtle.digest("SHA-256", new TextEncoder().encode(text)));
+  return `sha256-${Array.from(digest, byte => byte.toString(16).padStart(2, "0")).join("")}`;
+}

@@ -6,6 +6,21 @@
 export function readableText(value: string, maxLength: number): string;
 /** @param {MDLNotificationBody} body */
 export function fullText(body: MDLNotificationBody): string;
+/** A button or function of the app inside a notification text. @param {string} label @returns {MDLNotificationPart} */
+export function control(label: string): MDLNotificationPart;
+/** A shortcut inside a notification text, e.g. `key("Ctrl+Z")`. @param {string} keys @returns {MDLNotificationPart} */
+export function key(keys: string): MDLNotificationPart;
+/**
+ * Notification text as a template literal: interpolated strings become highlighted values, parts from
+ * `control` and `key` stay as they are, other values (numbers) become plain text, and a line break in the template
+ * starts a new line.
+ * ```js
+ * text`${name} has no ${"App.json"}.\nSet it up with ${control("New")} or ${key("Ctrl+N")}.`
+ * ```
+ * @param {TemplateStringsArray} strings @param {...unknown} values
+ * @returns {MDLNotificationPart[]}
+ */
+export function text(strings: TemplateStringsArray, ...values: unknown[]): MDLNotificationPart[];
 /**
  * Which notifications to drop, oldest first, so that the stack fits `capacity`. Persistent ones are kept.
  * @param {Array<{ height: number, persistent: boolean }>} stack Oldest first.
@@ -27,7 +42,7 @@ export function planTrim(stack: Array<{
  * @property {number} [maxTextLength]
  * @property {string} [defaultCode]
  * @property {() => void} [block] Disables the application for `fatal`.
- * @property {{ title: string, body: string, codes: { error: string, rejection: string }, details(kind: "error" | "rejection", value: unknown): string }} [globalErrors]
+ * @property {{ title: MDLNotificationBody, body: MDLNotificationBody, codes: { error: string, rejection: string }, details(kind: "error" | "rejection", value: unknown): string }} [globalErrors]
  *   Reports uncaught errors and unhandled rejections as errors.
  */
 /**
@@ -36,8 +51,8 @@ export function planTrim(stack: Array<{
  * @param {MDLNotificationsOptions} options
  */
 export function create({ window, container, strings: overrides, symbols, duration, maxTextLength, defaultCode, icon, block, globalErrors }: MDLNotificationsOptions): {
-    show: (severity: MDLSeverity, title: string, body: MDLNotificationBody, options?: MDLNotificationOptions) => MDLNotificationHandle;
-    fatal: (title: string, body: MDLNotificationBody, options?: {
+    show: (severity: MDLSeverity, title: MDLNotificationBody, body: MDLNotificationBody, options?: MDLNotificationOptions) => MDLNotificationHandle;
+    fatal: (title: MDLNotificationBody, body: MDLNotificationBody, options?: {
         details?: MDLNotificationBody;
         code?: string;
     }) => MDLNotificationHandle;
@@ -72,8 +87,8 @@ export type MDLNotificationsOptions = {
      * Reports uncaught errors and unhandled rejections as errors.
      */
     globalErrors?: {
-        title: string;
-        body: string;
+        title: MDLNotificationBody;
+        body: MDLNotificationBody;
         codes: {
             error: string;
             rejection: string;
@@ -83,11 +98,19 @@ export type MDLNotificationsOptions = {
 };
 export type MDLSeverity = "info" | "warning" | "error";
 /**
- * Parts as `{ value }` are highlighted.
+ * `value`: a name the user gave (entry, folder, file), highlighted. `control`: a button or function of the app,
+ * shown like a control. `key`: a shortcut such as `Ctrl+Z`, shown as keys. `lineBreak`: starts a new line.
  */
-export type MDLNotificationBody = string | Array<string | {
+export type MDLNotificationPart = string | {
     value: string;
-}>;
+} | {
+    control: string;
+} | {
+    key: string;
+} | {
+    lineBreak: true;
+};
+export type MDLNotificationBody = string | MDLNotificationPart[];
 export type MDLNotificationStrings = {
     /**
      * Text of the tag in the header; `""` shows none.

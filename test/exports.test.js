@@ -17,6 +17,7 @@ test("core exports", () => {
   assert.deepEqual(shape(core), {
     dates: ["addDays", "addPeriod", "dayNumber", "diff", "format", "formatPattern", "fromTime", "isoWeek", "monthStart", "parse", "periodStart", "toTime", "today", "weekStart"],
     history: ["controls", "create"],
+    json: ["read", "stringify"],
     markdown: ["escapeHtml", "inline", "invalidCharacter", "join", "keyBlocks", "plainText", "split", "trailingTag"],
     search: ["create"]
   });
@@ -25,18 +26,22 @@ test("core exports", () => {
 test("platform exports", () => {
   assert.deepEqual(shape(platform), {
     audio: ["create", "fillPlate", "voiceTiming"],
+    device: ["id"],
     handles: ["create"],
+    jsonFile: ["create"],
     session: ["create", "open"],
-    startup: ["missingApis", "missingResources"],
-    storage: ["MDLStorageConflictError", "ensurePermission", "file", "folder", "memory"]
+    startup: ["missingApis", "missingResources", "reloadFlag"],
+    storage: ["MDLStorageConflictError", "ensurePermission", "file", "fingerprint", "folder", "memory", "probe"]
   });
 });
 
 test("ui exports", () => {
   assert.deepEqual(shape(ui), {
     keymap: ["create", "isEditable", "matches", "parse"],
-    notifications: ["create", "fullText", "planTrim", "readableText"],
+    notifications: ["control", "create", "fullText", "key", "planTrim", "readableText", "text"],
     popover: ["create", "place", "point", "viewport"],
+    recent: ["render"],
+    segmented: ["select"],
     sortable: ["create", "dropIndex", "position"],
     tooltips: ["create"]
   });

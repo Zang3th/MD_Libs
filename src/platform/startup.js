@@ -56,3 +56,29 @@ export function missingApis({ window, apis }) {
   return apis.filter(api => api.endsWith("()") ? typeof globals[api.slice(0, -2)] !== "function" : globals[api] === undefined)
     .map(api => api.endsWith("()") ? `window.${api}` : api);
 }
+
+/**
+ * A flag for the next page load only, such as “show the start page instead of reopening the last document”
+ * before a reload. It expires after `expire` ms in case the reload is cancelled, for example in a leave prompt.
+ * Without usable storage the flag is never set.
+ * @param {{ storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null, key: string, window: Pick<Window, "setTimeout">, expire?: number }} options
+ */
+export function reloadFlag({ storage, key, window, expire = 2000 }) {
+  function clear() {
+    try { storage?.removeItem(key); } catch { /* Nothing to clear without storage. */ }
+  }
+  return {
+    set() {
+      if (!storage) return;
+      try { storage.setItem(key, "1"); } catch { return; }
+      window.setTimeout(clear, expire);
+    },
+    /** Whether the flag was set; reading clears it. */
+    take() {
+      let set = false;
+      try { set = storage?.getItem(key) === "1"; } catch { return false; }
+      clear();
+      return set;
+    }
+  };
+}

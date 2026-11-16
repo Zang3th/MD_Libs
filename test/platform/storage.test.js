@@ -83,3 +83,25 @@ test("permission is kept when granted and requested only when prompting is allow
   assert.equal(await storage.ensurePermission(handle("granted", "denied"), "readwrite", { query: false }), false);
   assert.deepEqual(calls, ["request"]);
 });
+
+test("probe reports a usable, a forbidden and a vanished handle", async () => {
+  const disk = fakes.fileSystem({ "a.md": "A" });
+  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite"), "granted");
+  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read"), "granted");
+  disk.change("a.md", null);
+  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read"), "missing");
+  const gone = Object.assign(new Error("gone"), { name: "NotFoundError" });
+  const vanished = { ...disk.directory, entries: () => ({ [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(gone) }) }) };
+  assert.equal(await storage.probe(/** @type {any} */ (vanished), "readwrite"), "missing");
+  disk.hooks.permission = "prompt";
+  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite", { prompt: false }), "denied");
+  assert.equal(disk.hooks.requests, 0);
+  const broken = { ...disk.directory, queryPermission: async () => { throw new Error("broken"); } };
+  await assert.rejects(storage.probe(/** @type {any} */ (broken), "read"), /broken/);
+});
+
+test("fingerprints are SHA-256 of the UTF-8 text", async () => {
+  const { subtle } = globalThis.crypto;
+  assert.equal(await storage.fingerprint("abc", { subtle }), "sha256-ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  assert.notEqual(await storage.fingerprint("Grüße", { subtle }), await storage.fingerprint("Grusse", { subtle }));
+});

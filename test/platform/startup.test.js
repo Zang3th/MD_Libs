@@ -56,3 +56,39 @@ test("missing APIs are reported as expressions; names ending in () must be funct
   assert.deepEqual(startup.missingApis({ window, apis: ["showOpenFilePicker()", "showSaveFilePicker()", "showDirectoryPicker()", "indexedDB", "caches"] }),
     ["window.showSaveFilePicker()", "window.showDirectoryPicker()", "caches"]);
 });
+
+test("a reload flag is taken once and expires when the reload does not happen", () => {
+  /** @type {Map<string, string>} */
+  const stored = new Map();
+  const storage = {
+    getItem: (/** @type {string} */ key) => stored.get(key) ?? null,
+    setItem: (/** @type {string} */ key, /** @type {string} */ value) => { stored.set(key, value); },
+    removeItem: (/** @type {string} */ key) => { stored.delete(key); }
+  };
+  /** @type {Array<{ run: () => void, delay: number }>} */
+  const timers = [];
+  const window = { setTimeout: (/** @type {() => void} */ run, /** @type {number} */ delay) => { timers.push({ run, delay }); return timers.length; } };
+  const flag = startup.reloadFlag({ storage, key: "skip", window: /** @type {any} */ (window) });
+  assert.equal(flag.take(), false);
+  flag.set();
+  assert.equal(timers[0].delay, 2000);
+  assert.equal(flag.take(), true);
+  assert.equal(flag.take(), false);
+  flag.set();
+  timers[1].run();
+  assert.equal(flag.take(), false);
+});
+
+test("a reload flag without usable storage is never set", () => {
+  const broken = { getItem() { throw new Error("blocked"); }, setItem() { throw new Error("blocked"); }, removeItem() { throw new Error("blocked"); } };
+  let timers = 0;
+  const flag = startup.reloadFlag({ storage: broken, key: "skip", window: /** @type {any} */ ({ setTimeout: () => ++timers }), expire: 10 });
+  flag.set();
+  assert.equal(timers, 0);
+  assert.equal(flag.take(), false);
+  const missing = startup.reloadFlag({ storage: null, key: "skip", window: /** @type {any} */ ({ setTimeout: () => ++timers }) });
+  missing.set();
+  assert.deepEqual([missing.take(), timers], [false, 0]);
+  const readOnly = { getItem: () => "1", setItem() {}, removeItem() { throw new Error("blocked"); } };
+  assert.equal(startup.reloadFlag({ storage: readOnly, key: "skip", window: /** @type {any} */ ({ setTimeout: () => 0 }) }).take(), true);
+});

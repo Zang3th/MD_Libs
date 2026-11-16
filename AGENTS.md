@@ -1,6 +1,6 @@
 # AGENTS.md
 
-MD_Libs is the shared, tested application core of several Markdown apps like MD_Manager (`../MD_Manager`) and MD_Calendar (`../MD_Calendar`). Its purpose is to remove duplication between them and to build a usable library on top of that; code that removes no duplication, cannot be abstracted easily and does not strengthen the core does not belong here.
+MD_Libs is the shared, tested application core of several Markdown apps like MD_Manager (`../MD_Manager`) and MD_Calendar (`../MD_Calendar`). Its purpose is to remove duplication between them and to be the library future apps of this kind are built on: everything that makes sense for such apps in general belongs here, also when only one app uses it so far, with the app-specific part as options or a thin layer in the app. Code that is specific to one app's data or behavior does not belong here.
 
 ## Principles
 

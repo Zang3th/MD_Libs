@@ -38,6 +38,8 @@ test("bundle options produce one classic script with a linked source map", () =>
   assert.equal(options.sourcemap, "linked");
   assert.equal(options.absWorkingDir, "/app");
   assert.deepEqual(bundleOptions({ root: "/app", entry: "main.js", outfile: "out/main.js" }).entryPoints, ["main.js"]);
+  assert.equal("define" in options, false);
+  assert.deepEqual(bundleOptions({ root: "/app", define: { APP_VERSION: '"1.0.0"' } }).define, { APP_VERSION: '"1.0.0"' });
 });
 
 test("build writes a bundle that runs as a classic script without modules", async () => {

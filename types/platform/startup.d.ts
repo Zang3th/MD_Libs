@@ -15,6 +15,22 @@ export function missingApis({ window, apis }: {
     window: object;
     apis: string[];
 }): string[];
+/**
+ * A flag for the next page load only, such as “show the start page instead of reopening the last document”
+ * before a reload. It expires after `expire` ms in case the reload is cancelled, for example in a leave prompt.
+ * Without usable storage the flag is never set.
+ * @param {{ storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null, key: string, window: Pick<Window, "setTimeout">, expire?: number }} options
+ */
+export function reloadFlag({ storage, key, window, expire }: {
+    storage: Pick<Storage, "getItem" | "setItem" | "removeItem"> | null;
+    key: string;
+    window: Pick<Window, "setTimeout">;
+    expire?: number;
+}): {
+    set(): void;
+    /** Whether the flag was set; reading clears it. */
+    take(): boolean;
+};
 export type MDLResourceChecks = {
     document: Document;
     /**
