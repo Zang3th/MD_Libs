@@ -11,6 +11,8 @@
  * @property {(handle: MDLRememberedHandle, data?: (existing: MDLHandleRecord<D> | undefined) => D) => Promise<MDLHandleRecord<D>>} remember
  *   Stores the handle as most recently opened, merged with an earlier record of the same entry, and drops records beyond `limit`.
  * @property {(id: string) => Promise<void>} forget
+ * @property {(id: string, data: (existing: MDLHandleRecord<D>) => Partial<D>) => Promise<MDLHandleRecord<D> | undefined>} update
+ *   Merges `data` into a record without changing its place in the list; `undefined` when the record is gone.
  */
 /**
  * Remembered file or folder handles in IndexedDB. One object store with `keyPath: "id"`; records keep
@@ -52,4 +54,8 @@ export type MDLHandleStore<D extends unknown = any> = {
      */
     remember: (handle: MDLRememberedHandle, data?: (existing: MDLHandleRecord<D> | undefined) => D) => Promise<MDLHandleRecord<D>>;
     forget: (id: string) => Promise<void>;
+    /**
+     *   Merges `data` into a record without changing its place in the list; `undefined` when the record is gone.
+     */
+    update: (id: string, data: (existing: MDLHandleRecord<D>) => Partial<D>) => Promise<MDLHandleRecord<D> | undefined>;
 };

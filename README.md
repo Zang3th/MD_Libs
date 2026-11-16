@@ -240,6 +240,7 @@ const recent = handles.create({
 });
 await recent.remember(handle, existing => ({ title: "Project" }));
 await recent.list();  // → [{ id, name, openedAt, handle, title }]
+await recent.update(id, existing => ({ title: "Renamed" }));  // keeps the order
 ```
 
 #### `session`
@@ -387,8 +388,8 @@ The list of a start page: rows with icon, name and time, each with a remove butt
 
 ```js
 recent.render({
-  list, items,                         // [{ id, name, openedAt }], newest first
-  format: time => formatted(time),
+  list, items,                         // [{ id, name, openedAt, detail? }], newest first
+  format: time => ({ date: "Today", time: "09:30" }),  // or one string
   icon: name => svg[name],             // "item", "remove"
   strings: { empty: "No recent files", remove: name => `Remove ${name}` }
 });
@@ -457,7 +458,7 @@ npm run verify
     </tr>
   </thead>
   <tbody>
-    <tr><td>master</td><td>12.11.2026</td><td>2,134</td><td>131</td></tr>
+    <tr><td>master</td><td>16.11.2026</td><td>2,317</td><td>150</td></tr>
     <tr><td>v0.4.0</td><td>12.11.2026</td><td>2,134</td><td>130</td></tr>
   </tbody>
 </table>

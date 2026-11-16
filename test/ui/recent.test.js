@@ -23,6 +23,14 @@ test("rows show icon, name and time and carry the ids for opening and removing",
   assert.deepEqual([remove.dataset.forget, remove.getAttribute("aria-label"), remove.querySelector("svg").getAttribute("class")], ["b", "Remove <Private>", "remove"]);
 });
 
+test("a detail line and a time split into date and clock", () => {
+  const window = createWindow('<ul id="list"></ul>');
+  const list = window.document.getElementById("list");
+  recent.render({ ...options, format: () => ({ date: "Today", time: "09:30" }), list, items: [{ id: "a", name: "Work", openedAt: 0, detail: "N:\\Work · 2 devices" }] });
+  assert.equal(list.querySelector(".recent-label .recent-detail").textContent, "N:\\Work · 2 devices");
+  assert.deepEqual([...list.querySelectorAll(".recent-time span")].map(part => [part.className, part.textContent]), [["recent-date", "Today"], ["recent-clock", "09:30"]]);
+});
+
 test("an empty list says so", () => {
   const window = createWindow('<ul id="list"></ul>');
   const list = window.document.getElementById("list");

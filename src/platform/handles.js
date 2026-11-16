@@ -13,6 +13,8 @@
  * @property {(handle: MDLRememberedHandle, data?: (existing: MDLHandleRecord<D> | undefined) => D) => Promise<MDLHandleRecord<D>>} remember
  *   Stores the handle as most recently opened, merged with an earlier record of the same entry, and drops records beyond `limit`.
  * @property {(id: string) => Promise<void>} forget
+ * @property {(id: string, data: (existing: MDLHandleRecord<D>) => Partial<D>) => Promise<MDLHandleRecord<D> | undefined>} update
+ *   Merges `data` into a record without changing its place in the list; `undefined` when the record is gone.
  */
 
 /**
@@ -108,6 +110,17 @@ export function create({ indexedDB, database, store, version = 1, limit, now = D
       rememberQueue = operation.catch(() => {});
       return operation;
     },
-    forget(id) { return write(objectStore => { objectStore.delete(id); }); }
+    forget(id) { return write(objectStore => { objectStore.delete(id); }); },
+    update(id, data) {
+      const operation = rememberQueue.catch(() => {}).then(async () => {
+        const existing = (await list()).find(record => record.id === id);
+        if (!existing) return undefined;
+        const record = { ...existing, ...data(existing), id, name: existing.name, openedAt: existing.openedAt, handle: existing.handle };
+        await write(objectStore => { objectStore.put(record); });
+        return record;
+      });
+      rememberQueue = operation.catch(() => {});
+      return operation;
+    }
   };
 }

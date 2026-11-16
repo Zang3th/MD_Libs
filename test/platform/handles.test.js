@@ -30,6 +30,18 @@ test("remembered handles are listed newest first, merged by entry and limited", 
   assert.deepEqual((await store.list()).map(record => record.name), ["c.md"]);
 });
 
+test("update merges data without moving the record; a forgotten record is not recreated", async () => {
+  const { store, disk } = setup(5);
+  const first = await store.remember(disk.fileHandle("a.md"), () => ({ title: "A" }));
+  await store.remember(disk.fileHandle("b.md"));
+  const updated = await store.update(first.id, existing => ({ width: (existing.width || 0) + 3 }));
+  assert.deepEqual([updated?.title, updated?.width, updated?.openedAt], ["A", 3, first.openedAt]);
+  assert.deepEqual((await store.list()).map(record => [record.name, record.width]), [["b.md", undefined], ["a.md", 3]]);
+  await store.forget(first.id);
+  assert.equal(await store.update(first.id, () => ({ width: 1 })), undefined);
+  assert.equal((await store.list()).length, 1);
+});
+
 test("concurrent remember calls run one after another and a failure does not block the next", async () => {
   const { store, disk, indexedDB } = setup(5);
   await Promise.all([store.remember(disk.fileHandle("a.md")), store.remember(disk.fileHandle("b.md"))]);
