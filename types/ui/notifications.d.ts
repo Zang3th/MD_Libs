@@ -151,12 +151,14 @@ export type MDLNotificationOptions = {
      */
     persistent?: boolean;
     /**
-     * Buttons that close the notification and run.
+     * Buttons that close the notification
+     * and run; `primary` marks the main one, `tone: "warning"` one that overrides something, `tone: "success"` a safe one.
      */
     actions?: Array<{
         label: string;
         run(): void;
         primary?: boolean;
+        tone?: "warning" | "success";
     }>;
 };
 export type MDLNotificationHandle = {

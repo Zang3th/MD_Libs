@@ -162,12 +162,12 @@ test("app texts, symbols, persistent notices with actions and empty bodies", () 
   assert.equal(info.querySelector(".notification-tag"), null);
   assert.equal(info.querySelector(".notification-body"), null, "an empty body is left out");
 
-  const notice = stack.show("warning", "Changed", "", { persistent: true, actions: [{ label: "Reload", run: () => ran.push("reload") }, { label: "Overwrite", primary: true, run: () => ran.push("overwrite") }] });
+  const notice = stack.show("warning", "Changed", "", { persistent: true, actions: [{ label: "Reload", run: () => ran.push("reload") }, { label: "Overwrite", primary: true, run: () => ran.push("overwrite") }, { label: "Force", tone: "warning", run: () => ran.push("force") }, { label: "Keep", tone: "success", run: () => ran.push("keep") }] });
   const warning = /** @type {HTMLElement} */ (container.lastElementChild);
   assert.equal(warning.dataset.persistent, "true");
   assert.equal(warning.querySelector(".notification-action")?.getAttribute("aria-label"), "Schließen");
   const buttons = /** @type {HTMLButtonElement[]} */ ([...warning.querySelectorAll(".notification-button")]);
-  assert.deepEqual(buttons.map(button => button.className), ["notification-button", "notification-button notification-button-primary"]);
+  assert.deepEqual(buttons.map(button => button.className), ["notification-button", "notification-button notification-button-primary", "notification-button notification-button-warning", "notification-button notification-button-success"]);
   buttons[1].click();
   assert.deepEqual([ran, notice.isOpen()], [["overwrite"], false]);
 

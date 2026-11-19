@@ -16,7 +16,7 @@ function shape(entry) {
 test("core exports", () => {
   assert.deepEqual(shape(core), {
     dates: ["addDays", "addPeriod", "dayNumber", "diff", "format", "formatPattern", "fromTime", "isoWeek", "monthStart", "parse", "periodStart", "toTime", "today", "weekStart"],
-    history: ["controls", "create"],
+    history: ["controls", "create", "fingerprint"],
     json: ["read", "stringify"],
     markdown: ["escapeHtml", "inline", "invalidCharacter", "join", "keyBlocks", "plainText", "split", "trailingTag"],
     search: ["create"]

@@ -6,6 +6,7 @@
  * @property {unknown} [beforeViewState]
  * @property {unknown} [afterViewState]
  * @property {number} [size] Approximate retained bytes, counted against `maxBytes`.
+ * @property {string} [coalesce] Actions with the same key that follow each other directly become one step.
  */
 /**
  * @template {MDLAction} [A=MDLAction]
@@ -31,13 +32,19 @@
 /**
  * Bounded undo history. Entries are dropped from the front when `maxEntries` or `maxBytes` is exceeded;
  * the distance to the saved state survives trimming and discarded redo branches.
+ *
+ * Two options keep the history to real changes. With `fingerprint`, a function that identifies the current data (see
+ * `fingerprint` below), an action that returns the data to a state reached earlier on the current path drops the steps in
+ * between, so that changes and their reversal (checking off and on, moving and moving back) leave no steps. Actions with
+ * the same `coalesce` key that follow each other directly become one step, unless the state between them was saved.
  * @template {MDLAction} [A=MDLAction]
- * @param {{ maxEntries?: number, maxBytes?: number }} [options]
+ * @param {{ maxEntries?: number, maxBytes?: number, fingerprint?: () => string }} [options]
  * @returns {MDLHistory<A>}
  */
-export function create<A extends MDLAction = MDLAction>({ maxEntries, maxBytes }?: {
+export function create<A extends MDLAction = MDLAction>({ maxEntries, maxBytes, fingerprint }?: {
     maxEntries?: number;
     maxBytes?: number;
+    fingerprint?: () => string;
 }): MDLHistory<A>;
 /** @typedef {"saved" | "unsaved" | "conflict"} MDLSaveStatus */
 /**
@@ -69,6 +76,12 @@ export function controls({ history, unsaved, conflict, strings }: {
     conflict?: boolean;
     strings: MDLControlStrings;
 }): MDLControlState;
+/**
+ * A short fingerprint of texts for `create({ fingerprint })`: a 53-bit hash (cyrb53) of the texts and their lengths, as
+ * hexadecimal. Equal texts give equal fingerprints; different texts collide with negligible probability.
+ * @param {readonly string[]} texts
+ */
+export function fingerprint(texts: readonly string[]): string;
 export type MDLAction = {
     label: string;
     /**
@@ -82,6 +95,10 @@ export type MDLAction = {
      * Approximate retained bytes, counted against `maxBytes`.
      */
     size?: number;
+    /**
+     * Actions with the same key that follow each other directly become one step.
+     */
+    coalesce?: string;
 };
 export type MDLStep<A extends MDLAction = MDLAction> = {
     label: string;

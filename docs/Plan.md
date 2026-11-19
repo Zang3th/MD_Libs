@@ -38,7 +38,7 @@ Rules for working here: [AGENTS.md](../AGENTS.md). API: [README](../README.md). 
 
 What the README does not state:
 
-- **history:** `execute` is a no-op when `redo()` returns `false` and rolls back on an error. The saved-state distance survives trimming, discarded redo branches and `replaceCurrent`.
+- **history:** `execute` is a no-op when `redo()` returns `false` and rolls back on an error. The saved-state distance survives trimming, discarded redo branches and `replaceCurrent`. With the `fingerprint` option, an action that returns the data to an earlier state on the current path drops the steps in between (a saved state among them counts as left); actions with the same `coalesce` key that follow each other directly become one step, unless the state between them was saved. `fingerprint(texts)` hashes texts for that option.
 - **markdown:** helpers for the shared dialect only; parsers and serializers stay in the apps. A file with an invalid character is rejected by MD_Manager and opened with a warning by MD_Calendar.
 - **search:** MD_Manager's scorer (subsequence, word starts, smart case, top-K with threshold, narrowing). Results also carry the index of the matched field.
 - **dates:** no `Intl`; names come from the app, so output is identical on every platform. `periodStart` and `addPeriod` take a day key or a UTC time and return the same kind; times reach years a key cannot write, which MD_Manager's archive needs.

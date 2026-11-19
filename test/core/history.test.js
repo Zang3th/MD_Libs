@@ -159,3 +159,80 @@ test("undo and redo follow the history; the save status follows unsaved changes 
   assert.equal(history.controls({ history: h, unsaved: 0, conflict: true, strings }).save.status, "conflict");
   assert.equal(history.controls({ history: h, unsaved: 0, strings }).save.status, "saved");
 });
+
+/** A history over one value whose fingerprint is the value itself, with actions that set it. */
+function valueHistory() {
+  const state = { value: 0 };
+  const h = history.create({ fingerprint: () => String(state.value) });
+  /** @param {number} next @param {string} [coalesce] */
+  const set = (next, coalesce) => {
+    const before = state.value;
+    return { label: `=${next}`, coalesce, redo() { state.value = next; }, undo() { state.value = before; } };
+  };
+  return { state, h, set };
+}
+
+test("with a fingerprint, returning to an earlier state drops the steps in between", () => {
+  const { state, h, set } = valueHistory();
+  h.execute(set(1));
+  h.execute(set(2));
+  h.execute(set(1));
+  assert.deepEqual([state.value, h.position, h.unsaved, h.undoLabel], [1, 1, 1, "=1"]);
+  // Back to the state before the first action: nothing left to undo, nothing unsaved.
+  h.execute(set(0));
+  assert.deepEqual([state.value, h.position, h.unsaved, h.canUndo], [0, 0, 0, false]);
+  // Undo and redo still work on what remains.
+  h.execute(set(5));
+  h.execute(set(6));
+  h.undo();
+  assert.equal(state.value, 5);
+  h.redo();
+  assert.equal(state.value, 6);
+});
+
+test("a saved state among the dropped steps counts as left, like a discarded branch", () => {
+  const { h, set } = valueHistory();
+  h.execute(set(1));
+  h.execute(set(2));
+  h.markSaved();
+  h.execute(set(1));
+  assert.deepEqual([h.position, h.unsaved], [1, 1]);
+});
+
+test("actions with the same coalesce key become one step, but not across a saved state", () => {
+  const { state, h, set } = valueHistory();
+  h.execute(set(1, "label"));
+  h.execute(set(2, "label"));
+  h.execute(set(3, "label"));
+  assert.deepEqual([h.position, h.unsaved, h.undoLabel], [1, 1, "=3"]);
+  h.undo();
+  assert.deepEqual([state.value, h.canUndo], [0, false]);
+  h.redo();
+  assert.equal(state.value, 3);
+  // Cycling back to the start through the same key leaves no step at all.
+  h.execute(set(0, "label"));
+  assert.deepEqual([h.position, h.canUndo], [0, false]);
+  // Another key, or a save in between, keeps separate steps.
+  h.execute(set(1, "label"));
+  h.execute(set(2, "other"));
+  h.markSaved();
+  h.execute(set(4, "other"));
+  assert.deepEqual([h.position, h.unsaved], [3, 1]);
+});
+
+test("replacing the current entry takes its fingerprint anew", () => {
+  const { state, h, set } = valueHistory();
+  h.execute(set(1));
+  h.execute(set(2));
+  // The replacement sets the value back to 1 again: it is the state after the first entry, so the second step goes.
+  state.value = 1;
+  h.replaceCurrent({ ...set(1), redo() { state.value = 1; } });
+  assert.deepEqual([h.position, h.unsaved, h.undoLabel], [1, 1, "=1"]);
+});
+
+test("the text fingerprint is stable and tells texts apart", () => {
+  assert.equal(history.fingerprint(["a", "b"]), history.fingerprint(["a", "b"]));
+  assert.notEqual(history.fingerprint(["a", "b"]), history.fingerprint(["ab", ""]));
+  assert.notEqual(history.fingerprint(["x"]), history.fingerprint(["y"]));
+  assert.match(history.fingerprint([]), /^[0-9a-f]+$/);
+});

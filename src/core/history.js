@@ -6,6 +6,7 @@
  * @property {unknown} [beforeViewState]
  * @property {unknown} [afterViewState]
  * @property {number} [size] Approximate retained bytes, counted against `maxBytes`.
+ * @property {string} [coalesce] Actions with the same key that follow each other directly become one step.
  */
 
 /**
@@ -34,13 +35,20 @@
 /**
  * Bounded undo history. Entries are dropped from the front when `maxEntries` or `maxBytes` is exceeded;
  * the distance to the saved state survives trimming and discarded redo branches.
+ *
+ * Two options keep the history to real changes. With `fingerprint`, a function that identifies the current data (see
+ * `fingerprint` below), an action that returns the data to a state reached earlier on the current path drops the steps in
+ * between, so that changes and their reversal (checking off and on, moving and moving back) leave no steps. Actions with
+ * the same `coalesce` key that follow each other directly become one step, unless the state between them was saved.
  * @template {MDLAction} [A=MDLAction]
- * @param {{ maxEntries?: number, maxBytes?: number }} [options]
+ * @param {{ maxEntries?: number, maxBytes?: number, fingerprint?: () => string }} [options]
  * @returns {MDLHistory<A>}
  */
-export function create({ maxEntries = 100, maxBytes = 8 * 1024 * 1024 } = {}) {
-  /** @type {Array<A & { size: number }>} */
+export function create({ maxEntries = 100, maxBytes = 8 * 1024 * 1024, fingerprint } = {}) {
+  /** @type {Array<A & { size: number, mark?: string }>} */
   let entries = [];
+  /** Fingerprint of the state before the first entry, when known. @type {string | undefined} */
+  let baseMark;
   let index = -1;
   let totalSize = 0;
   let position = 0;
@@ -61,8 +69,34 @@ export function create({ maxEntries = 100, maxBytes = 8 * 1024 * 1024 } = {}) {
 
   function trim() {
     while (entries.length > 1 && (entries.length > maxEntries || totalSize > maxBytes)) {
-      totalSize -= /** @type {{ size: number }} */ (entries.shift()).size;
+      const dropped = /** @type {{ size: number, mark?: string }} */ (entries.shift());
+      totalSize -= dropped.size;
+      baseMark = dropped.mark;
       index -= 1;
+    }
+  }
+
+  /** The fingerprint of the state after entry `at`; -1 is the state before the first entry. @param {number} at */
+  function markAt(at) {
+    return at < 0 ? baseMark : entries[at].mark;
+  }
+
+  /**
+   * Records the fingerprint of the current state and drops the steps back to an earlier equal state on the current path.
+   * A saved state among the dropped ones is left like a discarded branch.
+   */
+  function settle() {
+    if (!fingerprint || index < 0) return;
+    const mark = fingerprint();
+    entries[index].mark = mark;
+    for (let at = index - 1; at >= -1; at--) {
+      if (markAt(at) !== mark) continue;
+      const dropped = entries.splice(at + 1);
+      totalSize -= dropped.reduce((size, entry) => size + entry.size, 0);
+      position -= dropped.length;
+      index = at;
+      if (savedPosition > position) leaveSavedBranch();
+      return;
     }
   }
 
@@ -84,14 +118,33 @@ export function create({ maxEntries = 100, maxBytes = 8 * 1024 * 1024 } = {}) {
 
   return {
     execute(action) {
+      // The state before the first action of a fresh history is the base the fingerprints compare with.
+      if (fingerprint && index === entries.length - 1 && markAt(index) === undefined) {
+        if (index < 0) baseMark = fingerprint();
+        else entries[index].mark = fingerprint();
+      }
       let changed = false;
       try { changed = action.redo() !== false; }
       catch (error) {
         try { action.undo(); } catch { /* Preserve the original failure. */ }
         throw error;
       }
-      if (changed) commit(action);
-      return changed;
+      if (!changed) return false;
+      const last = entries[index];
+      if (action.coalesce && last && last.coalesce === action.coalesce && index === entries.length - 1 && savedPosition !== position) {
+        // One step for both: undo reverts the new action, then the previous one.
+        entries[index] = {
+          ...action,
+          size: last.size + Math.max(0, action.size || 0),
+          beforeViewState: last.beforeViewState,
+          redo() { last.redo(); return action.redo(); },
+          undo() { action.undo(); last.undo(); }
+        };
+        totalSize += Math.max(0, action.size || 0);
+        trim();
+      } else commit(action);
+      settle();
+      return true;
     },
     commit,
     replaceCurrent(action) {
@@ -103,12 +156,17 @@ export function create({ maxEntries = 100, maxBytes = 8 * 1024 * 1024 } = {}) {
       const entry = sized(action);
       totalSize += entry.size - entries[index].size;
       entries[index] = { ...entries[index], label: action.label, redo: action.redo, afterViewState: action.afterViewState, size: entry.size };
+      // The replacement changed the state after this entry: its fingerprint is taken anew, and an equal earlier state
+      // drops the steps in between as after `execute`.
+      delete entries[index].mark;
       trim();
+      settle();
     },
     clear() {
       entries = [];
       index = -1;
       totalSize = 0;
+      baseMark = undefined;
     },
     undo() {
       if (index < 0) return null;
@@ -172,4 +230,27 @@ export function controls({ history, unsaved, conflict = false, strings }) {
     redo: { disabled: !canRedo, label: strings.redo(canRedo ? history?.redoLabel || "" : "") },
     save: { status, count, label: strings.save(status, count) }
   };
+}
+
+/**
+ * A short fingerprint of texts for `create({ fingerprint })`: a 53-bit hash (cyrb53) of the texts and their lengths, as
+ * hexadecimal. Equal texts give equal fingerprints; different texts collide with negligible probability.
+ * @param {readonly string[]} texts
+ */
+export function fingerprint(texts) {
+  let first = 0xdeadbeef;
+  let second = 0x41c6ce57;
+  /** @param {number} code */
+  const mix = code => {
+    first = Math.imul(first ^ code, 2654435761);
+    second = Math.imul(second ^ code, 1597334677);
+  };
+  // Each text with its length before it, so that the boundaries count; no copy of the texts is made.
+  for (const text of texts) {
+    mix(text.length);
+    for (let at = 0; at < text.length; at++) mix(text.charCodeAt(at));
+  }
+  first = Math.imul(first ^ (first >>> 16), 2246822507) ^ Math.imul(second ^ (second >>> 13), 3266489909);
+  second = Math.imul(second ^ (second >>> 16), 2246822507) ^ Math.imul(first ^ (first >>> 13), 3266489909);
+  return (4294967296 * (2097151 & second) + (first >>> 0)).toString(16);
 }

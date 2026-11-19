@@ -26,7 +26,8 @@ import { frame, writeClipboard } from "./internal.js";
  * @property {MDLNotificationBody} [details] Copied instead of the body for errors.
  * @property {string} [code] Error code; default `defaultCode`.
  * @property {boolean} [persistent] Stays until closed; errors always stay.
- * @property {Array<{ label: string, run(): void, primary?: boolean }>} [actions] Buttons that close the notification and run.
+ * @property {Array<{ label: string, run(): void, primary?: boolean, tone?: "warning" | "success" }>} [actions] Buttons that close the notification
+ *   and run; `primary` marks the main one, `tone: "warning"` one that overrides something, `tone: "success"` a safe one.
  */
 
 /** @typedef {{ dismiss(): void, isOpen(): boolean }} MDLNotificationHandle */
@@ -332,7 +333,7 @@ export function create({
       for (const action of options.actions) {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = `notification-button${action.primary ? " notification-button-primary" : ""}`;
+        button.className = `notification-button${action.primary ? " notification-button-primary" : ""}${action.tone ? ` notification-button-${action.tone}` : ""}`;
         button.textContent = action.label;
         button.addEventListener("click", () => {
           dismiss(notification);

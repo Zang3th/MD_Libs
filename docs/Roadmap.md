@@ -1,5 +1,85 @@
 # MD_Libs
 
+## Einheitliche Schnittstellen
+
+#Version
+- 0.4.0
+
+#Date
+- 11.11.2026 - 12.11.2026
+
+### Schnittstellen
+
+- [x] ~Alles mit Zustand über `create(options)` => `search.create`, `audio.create`, `sortable.create`~
+- [x] ~Werkzeuge der App im Options-Objekt => `build({ esbuild, root })`, `createChecker({ ts, root })`, `storageContract({ name, setup })`~
+- [x] ~`startup.missingApis({ window, apis })`: Funktionen ausdrücklich als `name()` statt Namensraten~
+- [x] ~Klänge raus aus MD_Libs, die Apps definieren ihre eigenen~
+
+### Module
+
+- [x] ~`core/controls` => `history.controls`~
+- [x] ~`core/text` + `core/inline` => `core/markdown`~
+- [x] ~`ui/dom` intern, `search.prepare`/`score`, `storage.stampOf` + `sortable.defaults` nicht mehr öffentlich~
+- [x] ~Harness: sieben Einstiegspunkte => `build`, `testing`, `checks`~
+
+### Verschiedenes
+
+- [x] ~`ui/popover` schließen: Klick außerhalb, Escape, `aria-expanded`~
+- [x] ~`platform/session` prüft selbst auf externe Änderungen (Intervall, Fokus, Sichtbarkeit) und liest die Dateien beim Öffnen~
+- [x] ~`platform/session` warnt vor dem Verlassen, in MD_Manager nur per Option~
+- [x] ~`core/markdown`: Prüfung auf ungültige Zeichen aus MD_Manager übernehmen~
+- [x] ~Gemeinsame jsconfig-Basis für beide Apps~
+- [x] ~`core/dates`: Zeiträume (Anfang + nächster Zeitraum für Tag, Woche, Monat, Quartal, Jahr mit Schrittweite) aus dem Archiv von MD_Manager~
+- [x] ~MD_Manager: eigenes `escapeHtml` in `ui/search.js` durch `markdown.escapeHtml` ersetzen~
+- [x] ~Typprüfung eines `checkJs`-Konsumenten (Plan 5.1.9)~
+- [x] ~Plan: `maxNodeModuleJsDepth` korrigieren, leeren Abschnitt 4 entfernen~
+
+### Integration
+
+- [x] ~MD_Calendar + MD_Manager umstellen~
+- [x] ~README, Plan + AGENTS aktualisieren~
+- [x] ~Weitere Punkte in MD_Calendar + MD_Manager umstellen, E2E + Baselines unverändert grün~
+
+#Pin
+## App-Integration
+
+#Version
+- 0.5.0
+
+#Date
+- 12.11.2026 - TBD
+
+### Allgemeines
+
+- [x] ~AGENTS: Zweck von MD_Libs auf künftige Apps erweitert~
+- [x] ~README + Deklarationen aktualisieren~
+
+### Bugs und Verbesserungen
+
+- [x] ~Generierte Deklarationen in `types/` ergänzen + Konsumentenprüfung gegen installierte Kopie~
+- [x] ~Tests: Tagesschlüssel über den ganzen Bereich 0100–9999, Jahre unter 1000 vierstellig~
+- [x] ~Tests: begrenzte Suche liefert den Anfang der vollen Rangfolge, auch bei Gleichständen und nach Narrowing~
+- [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
+
+### Module
+
+- [x] ~`core/json` (versionierte JSON-Dokumente, stabile Schlüsselreihenfolge)~
+- [x] ~`platform/jsonFile` (Read-Modify-Write eines JSON-Dokuments im Adapter) + `platform/device` (ID des Browserprofils)~
+- [x] ~`ui/recent` (zuletzt geöffnet für die Startseite) + `ui/segmented` (Auswahl + Indikator)~
+
+### Schnittstellen
+
+- [x] ~`storage.probe` (`granted`, `denied`, `missing`) + `storage.fingerprint` (SHA-256)~
+- [x] ~`startup.reloadFlag` (Startseite statt letztem Dokument nach einem Reload)~
+- [x] ~`notifications.text` als Template-Tag, Zeilenumbrüche + hervorgehobene Werte auch im Titel~
+- [x] ~`build({ define })` für Konstanten wie `APP_VERSION`~
+- [x] ~`history.create({ fingerprint })`: Rückkehr zu einem früheren Zustand verwirft die Schritte dazwischen (ab- und wieder anhaken, verschieben und zurück) + `history.fingerprint(texts)` (cyrb53)~
+- [x] ~`coalesce`-Schlüssel an Aktionen: direkt aufeinanderfolgende werden ein Schritt, außer dazwischen wurde gespeichert~
+- [x] ~`notifications`: `tone` (`warning`, `success`) für Buttons~
+
+#Archive
+# Archive
+
 ## Build und Grundgerüst
 
 #Version
@@ -93,77 +173,3 @@ DOM-Bausteine mit puren Kernen und der gemeinsame Test-Harness.
 
 - [x] ~Zeilenbilanz messen~
 - [x] ~Docs + README aller drei Repos aktualisieren~
-
-## Einheitliche Schnittstellen
-
-#Version
-- 0.4.0
-
-#Date
-- 11.11.2026 - 12.11.2026
-
-### Schnittstellen
-
-- [x] ~Alles mit Zustand über `create(options)` => `search.create`, `audio.create`, `sortable.create`~
-- [x] ~Werkzeuge der App im Options-Objekt => `build({ esbuild, root })`, `createChecker({ ts, root })`, `storageContract({ name, setup })`~
-- [x] ~`startup.missingApis({ window, apis })`: Funktionen ausdrücklich als `name()` statt Namensraten~
-- [x] ~Klänge raus aus MD_Libs, die Apps definieren ihre eigenen~
-
-### Module
-
-- [x] ~`core/controls` => `history.controls`~
-- [x] ~`core/text` + `core/inline` => `core/markdown`~
-- [x] ~`ui/dom` intern, `search.prepare`/`score`, `storage.stampOf` + `sortable.defaults` nicht mehr öffentlich~
-- [x] ~Harness: sieben Einstiegspunkte => `build`, `testing`, `checks`~
-
-### Verschiedenes
-
-- [x] ~`ui/popover` schließen: Klick außerhalb, Escape, `aria-expanded`~
-- [x] ~`platform/session` prüft selbst auf externe Änderungen (Intervall, Fokus, Sichtbarkeit) und liest die Dateien beim Öffnen~
-- [x] ~`platform/session` warnt vor dem Verlassen, in MD_Manager nur per Option~
-- [x] ~`core/markdown`: Prüfung auf ungültige Zeichen aus MD_Manager übernehmen~
-- [x] ~Gemeinsame jsconfig-Basis für beide Apps~
-- [x] ~`core/dates`: Zeiträume (Anfang + nächster Zeitraum für Tag, Woche, Monat, Quartal, Jahr mit Schrittweite) aus dem Archiv von MD_Manager~
-- [x] ~MD_Manager: eigenes `escapeHtml` in `ui/search.js` durch `markdown.escapeHtml` ersetzen~
-- [x] ~Typprüfung eines `checkJs`-Konsumenten (Plan 5.1.9)~
-- [x] ~Plan: `maxNodeModuleJsDepth` korrigieren, leeren Abschnitt 4 entfernen~
-
-### Integration
-
-- [x] ~MD_Calendar + MD_Manager umstellen~
-- [x] ~README, Plan + AGENTS aktualisieren~
-- [x] ~Weitere Punkte in MD_Calendar + MD_Manager umstellen, E2E + Baselines unverändert grün~
-
-#Pin
-## App-Integration
-
-#Version
-- 0.5.0
-
-#Date
-- 12.11.2026 - TBD
-
-### Allgemeines
-
-- [x] ~AGENTS: Zweck von MD_Libs auf künftige Apps erweitert~
-- [x] ~README + Deklarationen aktualisieren~
-
-### Bugs und Verbesserungen
-
-- [x] ~Generierte Deklarationen in `types/` ergänzen + Konsumentenprüfung gegen installierte Kopie~
-- [x] ~Tests: Tagesschlüssel über den ganzen Bereich 0100–9999, Jahre unter 1000 vierstellig~
-- [x] ~Tests: begrenzte Suche liefert den Anfang der vollen Rangfolge, auch bei Gleichständen und nach Narrowing~
-- [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
-
-### Module
-
-- [x] ~`core/json` (versionierte JSON-Dokumente, stabile Schlüsselreihenfolge)~
-- [x] ~`platform/jsonFile` (Read-Modify-Write eines JSON-Dokuments im Adapter) + `platform/device` (ID des Browserprofils)~
-- [x] ~`ui/recent` (zuletzt geöffnet für die Startseite) + `ui/segmented` (Auswahl + Indikator)~
-
-### Schnittstellen
-
-- [x] ~`storage.probe` (`granted`, `denied`, `missing`) + `storage.fingerprint` (SHA-256)~
-- [x] ~`startup.reloadFlag` (Startseite statt letztem Dokument nach einem Reload)~
-- [x] ~`notifications.text` als Template-Tag, Zeilenumbrüche + hervorgehobene Werte auch im Titel~
-- [x] ~`build({ define })` für Konstanten wie `APP_VERSION`~
