@@ -75,29 +75,58 @@ test("permission is kept when granted and requested only when prompting is allow
     async queryPermission() { calls.push("query"); return query; },
     async requestPermission() { calls.push("request"); return request; }
   });
-  assert.equal(await storage.ensurePermission(handle("granted", "denied"), "readwrite"), true);
-  assert.equal(await storage.ensurePermission(handle("prompt", "granted"), "readwrite"), true);
-  assert.equal(await storage.ensurePermission(handle("prompt", "granted"), "readwrite", { prompt: false }), false);
+  const { window } = timers();
+  assert.equal(await storage.ensurePermission(handle("granted", "denied"), "readwrite", { window }), true);
+  assert.equal(await storage.ensurePermission(handle("prompt", "granted"), "readwrite", { window }), true);
+  assert.equal(await storage.ensurePermission(handle("prompt", "granted"), "readwrite", { window, prompt: false }), false);
   assert.deepEqual(calls, ["query", "query", "request", "query"]);
-  calls.length = 0;
-  assert.equal(await storage.ensurePermission(handle("granted", "denied"), "readwrite", { query: false }), false);
-  assert.deepEqual(calls, ["request"]);
 });
 
-test("probe reports a usable, a forbidden and a vanished handle", async () => {
+test("a permission query the browser never answers rejects after five seconds without asking", async () => {
+  const { window, pending, fire } = timers();
+  let requests = 0;
+  const broken = { name: "Roadmap.md", queryPermission: () => new Promise(() => {}), async requestPermission() { requests++; return "granted"; } };
+  const result = storage.ensurePermission(/** @type {any} */ (broken), "readwrite", { window });
+  assert.deepEqual(pending(), [5000]);
+  fire();
+  await assert.rejects(result, { name: "TimeoutError", message: 'The browser did not respond when checking access to "Roadmap.md". Remove it from the recent list and open it again.' });
+  assert.equal(requests, 0);
   const disk = fakes.fileSystem({ "a.md": "A" });
-  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite"), "granted");
-  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read"), "granted");
+  await storage.ensurePermission(disk.fileHandle("a.md"), "read", { window });
+  assert.deepEqual(pending(), [], "an answered query clears its timer");
+});
+
+/** Timers that run only when the test fires them. */
+function timers() {
+  /** @type {Map<number, { run: () => void, delay: number }>} */
+  const scheduled = new Map();
+  let next = 0;
+  const window = /** @type {any} */ ({
+    setTimeout: (/** @type {() => void} */ run, /** @type {number} */ delay) => { scheduled.set(++next, { run, delay }); return next; },
+    clearTimeout: (/** @type {number} */ id) => { scheduled.delete(id); }
+  });
+  return {
+    window,
+    pending: () => [...scheduled.values()].map(timer => timer.delay),
+    fire() { for (const [id, timer] of scheduled) { scheduled.delete(id); timer.run(); } }
+  };
+}
+
+test("probe reports a usable, a forbidden and a vanished handle", async () => {
+  const { window } = timers();
+  const disk = fakes.fileSystem({ "a.md": "A" });
+  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite", { window }), "granted");
+  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read", { window }), "granted");
   disk.change("a.md", null);
-  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read"), "missing");
+  assert.equal(await storage.probe(/** @type {any} */ (disk.fileHandle("a.md")), "read", { window }), "missing");
   const gone = Object.assign(new Error("gone"), { name: "NotFoundError" });
   const vanished = { ...disk.directory, entries: () => ({ [Symbol.asyncIterator]: () => ({ next: () => Promise.reject(gone) }) }) };
-  assert.equal(await storage.probe(/** @type {any} */ (vanished), "readwrite"), "missing");
+  assert.equal(await storage.probe(/** @type {any} */ (vanished), "readwrite", { window }), "missing");
   disk.hooks.permission = "prompt";
-  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite", { prompt: false }), "denied");
+  assert.equal(await storage.probe(/** @type {any} */ (disk.directory), "readwrite", { window, prompt: false }), "denied");
   assert.equal(disk.hooks.requests, 0);
   const broken = { ...disk.directory, queryPermission: async () => { throw new Error("broken"); } };
-  await assert.rejects(storage.probe(/** @type {any} */ (broken), "read"), /broken/);
+  await assert.rejects(storage.probe(/** @type {any} */ (broken), "read", { window }), /broken/);
 });
 
 test("fingerprints are SHA-256 of the UTF-8 text", async () => {

@@ -218,16 +218,35 @@ export function memory(files = {}) {
   });
 }
 
+/** How long the browser may take to answer a permission query, which never shows a prompt. */
+const queryTimeout = 5000;
+
 /**
  * Ensures `mode` permission for a handle: granted permissions are kept; otherwise the user is asked
- * when `prompt` is set. Resolves to whether permission is granted.
- * @param {{ queryPermission?(options: { mode: "read" | "readwrite" }): Promise<PermissionState>, requestPermission(options: { mode: "read" | "readwrite" }): Promise<PermissionState> }} handle
+ * when `prompt` is set. Resolves to whether permission is granted. A query the browser does not answer within
+ * five seconds rejects with a `TimeoutError`: a remembered handle can break, for example after a browser update.
+ * @param {{ name?: string, queryPermission?(options: { mode: "read" | "readwrite" }): Promise<PermissionState>, requestPermission(options: { mode: "read" | "readwrite" }): Promise<PermissionState> }} handle
  * @param {"read" | "readwrite"} mode
- * @param {{ query?: boolean, prompt?: boolean }} [options] `query: false` asks directly without querying first.
+ * @param {{ window: Pick<Window, "setTimeout" | "clearTimeout">, prompt?: boolean }} options `window` times the query.
  */
-export async function ensurePermission(handle, mode, { query = true, prompt = true } = {}) {
-  if (query && handle.queryPermission && await handle.queryPermission({ mode }) === "granted") return true;
+export async function ensurePermission(handle, mode, { window, prompt = true }) {
+  if (handle.queryPermission && await answered(handle.queryPermission({ mode }), handle.name, window) === "granted") return true;
   return prompt ? await handle.requestPermission({ mode }) === "granted" : false;
+}
+
+/**
+ * `promise`, or a `TimeoutError` when it does not settle in time.
+ * @template T @param {Promise<T>} promise @param {string | undefined} name @param {Pick<Window, "setTimeout" | "clearTimeout">} window
+ * @returns {Promise<T>}
+ */
+function answered(promise, name, window) {
+  /** @type {ReturnType<Window["setTimeout"]> | undefined} */
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = window.setTimeout(() => reject(new DOMException(
+      `The browser did not respond when checking access to "${name}". Remove it from the recent list and open it again.`, "TimeoutError")), queryTimeout);
+  });
+  return /** @type {Promise<T>} */ (Promise.race([promise, timeout]).finally(() => window.clearTimeout(timer)));
 }
 
 /**
@@ -235,12 +254,13 @@ export async function ensurePermission(handle, mode, { query = true, prompt = tr
  * file was deleted, moved or renamed since. A handle outlives its entry, so only reading from it tells.
  * @param {Parameters<typeof ensurePermission>[0] & ({ entries(): AsyncIterable<unknown> } | { getFile(): Promise<unknown> })} handle
  * @param {"read" | "readwrite"} mode
- * @param {{ prompt?: boolean }} [options] `prompt: false` never asks the user.
+ * @param {{ window: Pick<Window, "setTimeout" | "clearTimeout">, prompt?: boolean }} options `prompt: false` never asks the user;
+ *   `window` times the permission query as in `ensurePermission`.
  * @returns {Promise<"granted" | "denied" | "missing">}
  */
-export async function probe(handle, mode, { prompt = true } = {}) {
+export async function probe(handle, mode, { window, prompt = true }) {
   try {
-    if (!await ensurePermission(handle, mode, { prompt })) return "denied";
+    if (!await ensurePermission(handle, mode, { window, prompt })) return "denied";
     if ("entries" in handle) {
       for await (const entry of handle.entries()) { void entry; break; }
     } else await handle.getFile();

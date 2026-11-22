@@ -60,6 +60,8 @@
 - [x] ~Tests: Tagesschlüssel über den ganzen Bereich 0100–9999, Jahre unter 1000 vierstellig~
 - [x] ~Tests: begrenzte Suche liefert den Anfang der vollen Rangfolge, auch bei Gleichständen und nach Narrowing~
 - [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
+- [x] ~Verwaiste Handles nach Browser-Update (Brave 1.100): Berechtigungsabfrage bricht nach 5 s mit `TimeoutError` ab statt ewig zu hängen~
+- [x] ~`handles`: Vergleich vom neuen Handle aus, nicht vergleichbare Einträge gelten als verschieden~
 
 ### Module
 
@@ -76,6 +78,7 @@
 - [x] ~`history.create({ fingerprint })`: Rückkehr zu einem früheren Zustand verwirft die Schritte dazwischen (ab- und wieder anhaken, verschieben und zurück) + `history.fingerprint(texts)` (cyrb53)~
 - [x] ~`coalesce`-Schlüssel an Aktionen: direkt aufeinanderfolgende werden ein Schritt, außer dazwischen wurde gespeichert~
 - [x] ~`notifications`: `tone` (`warning`, `success`) für Buttons~
+- [x] ~`storage.ensurePermission` + `storage.probe` brauchen `window` (Timer), fragen immer zuerst, Option `query` entfällt~
 
 #Archive
 # Archive

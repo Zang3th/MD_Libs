@@ -30,6 +30,20 @@ test("remembered handles are listed newest first, merged by entry and limited", 
   assert.deepEqual((await store.list()).map(record => record.name), ["c.md"]);
 });
 
+test("a remembered handle that never answers does not block remembering or finding other entries", async () => {
+  const { store, disk, indexedDB } = setup(5);
+  await store.remember(disk.fileHandle("a.md"));
+  const records = /** @type {any} */ (indexedDB).databases.get("App").stores.get("recent").records;
+  const [stale] = records.values();
+  stale.handle = { kind: "file", name: "a.md", isSameEntry: () => new Promise(() => {}) };
+  const fresh = disk.fileHandle("b.md");
+  const original = fresh.isSameEntry;
+  fresh.isSameEntry = other => other === stale.handle ? Promise.reject(new DOMException("aborted", "AbortError")) : original(other);
+  await store.remember(fresh);
+  assert.deepEqual((await store.list()).map(record => record.name), ["b.md", "a.md"]);
+  assert.equal((await store.find(fresh))?.name, "b.md");
+});
+
 test("update merges data without moving the record; a forgotten record is not recreated", async () => {
   const { store, disk } = setup(5);
   const first = await store.remember(disk.fileHandle("a.md"), () => ({ title: "A" }));

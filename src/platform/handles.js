@@ -75,10 +75,14 @@ export function create({ indexedDB, database, store, version = 1, limit, now = D
     }
   }
 
-  /** @param {MDLHandleRecord<D>[]} records @param {MDLRememberedHandle} handle */
+  /**
+   * Asks the new handle: a broken remembered handle may never answer, while comparing with it rejects at once.
+   * A record that cannot be compared is a different entry.
+   * @param {MDLHandleRecord<D>[]} records @param {MDLRememberedHandle} handle
+   */
   async function same(records, handle) {
     for (const record of records) {
-      if (await record.handle.isSameEntry(handle)) return record;
+      if (await handle.isSameEntry(record.handle).catch(() => false)) return record;
     }
     return undefined;
   }

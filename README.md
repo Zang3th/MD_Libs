@@ -200,10 +200,11 @@ const { text } = await folder.read("Calendar.md");
 // Rejects with MDLStorageConflictError if the file changed meanwhile.
 await folder.write("Calendar.md", updated, text);
 
-await storage.ensurePermission(directoryHandle, "readwrite");  // → true
+await storage.ensurePermission(directoryHandle, "readwrite", { window });  // → true
+// A query the browser does not answer within 5 s rejects with a TimeoutError.
 
 // A remembered handle may point to a deleted or moved entry.
-await storage.probe(handle, "readwrite", { prompt: false });
+await storage.probe(handle, "readwrite", { window, prompt: false });
 // → "granted" | "denied" | "missing"
 
 await storage.fingerprint(text, { subtle: crypto.subtle });

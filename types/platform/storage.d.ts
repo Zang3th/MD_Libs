@@ -33,20 +33,22 @@ export function memory(files?: Record<string, string>): MDLStorageAdapter & {
 };
 /**
  * Ensures `mode` permission for a handle: granted permissions are kept; otherwise the user is asked
- * when `prompt` is set. Resolves to whether permission is granted.
- * @param {{ queryPermission?(options: { mode: "read" | "readwrite" }): Promise<PermissionState>, requestPermission(options: { mode: "read" | "readwrite" }): Promise<PermissionState> }} handle
+ * when `prompt` is set. Resolves to whether permission is granted. A query the browser does not answer within
+ * five seconds rejects with a `TimeoutError`: a remembered handle can break, for example after a browser update.
+ * @param {{ name?: string, queryPermission?(options: { mode: "read" | "readwrite" }): Promise<PermissionState>, requestPermission(options: { mode: "read" | "readwrite" }): Promise<PermissionState> }} handle
  * @param {"read" | "readwrite"} mode
- * @param {{ query?: boolean, prompt?: boolean }} [options] `query: false` asks directly without querying first.
+ * @param {{ window: Pick<Window, "setTimeout" | "clearTimeout">, prompt?: boolean }} options `window` times the query.
  */
 export function ensurePermission(handle: {
+    name?: string;
     queryPermission?(options: {
         mode: "read" | "readwrite";
     }): Promise<PermissionState>;
     requestPermission(options: {
         mode: "read" | "readwrite";
     }): Promise<PermissionState>;
-}, mode: "read" | "readwrite", { query, prompt }?: {
-    query?: boolean;
+}, mode: "read" | "readwrite", { window, prompt }: {
+    window: Pick<Window, "setTimeout" | "clearTimeout">;
     prompt?: boolean;
 }): Promise<boolean>;
 /**
@@ -54,14 +56,16 @@ export function ensurePermission(handle: {
  * file was deleted, moved or renamed since. A handle outlives its entry, so only reading from it tells.
  * @param {Parameters<typeof ensurePermission>[0] & ({ entries(): AsyncIterable<unknown> } | { getFile(): Promise<unknown> })} handle
  * @param {"read" | "readwrite"} mode
- * @param {{ prompt?: boolean }} [options] `prompt: false` never asks the user.
+ * @param {{ window: Pick<Window, "setTimeout" | "clearTimeout">, prompt?: boolean }} options `prompt: false` never asks the user;
+ *   `window` times the permission query as in `ensurePermission`.
  * @returns {Promise<"granted" | "denied" | "missing">}
  */
 export function probe(handle: Parameters<typeof ensurePermission>[0] & ({
     entries(): AsyncIterable<unknown>;
 } | {
     getFile(): Promise<unknown>;
-}), mode: "read" | "readwrite", { prompt }?: {
+}), mode: "read" | "readwrite", { window, prompt }: {
+    window: Pick<Window, "setTimeout" | "clearTimeout">;
     prompt?: boolean;
 }): Promise<"granted" | "denied" | "missing">;
 /**
