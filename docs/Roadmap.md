@@ -62,12 +62,18 @@
 - [x] ~Tests: Architektur-Checker prüft Dateien in Unterordnern, Kommentare und Strings sind kein Code~
 - [x] ~Verwaiste Handles nach Browser-Update (Brave 1.100): Berechtigungsabfrage bricht nach 5 s mit `TimeoutError` ab statt ewig zu hängen~
 - [x] ~`handles`: Vergleich vom neuen Handle aus, nicht vergleichbare Einträge gelten als verschieden~
+- [x] ~`markdown.links`: keine Links in E-Mail-Adressen~
+- [x] ~`markdown`: ein Muster für Markdown-Links in `links` + `inline`~
+- [x] ~`ui/linkfield`: kein erzwungenes Layout pro Tastendruck~
 
 ### Module
 
 - [x] ~`core/json` (versionierte JSON-Dokumente, stabile Schlüsselreihenfolge)~
 - [x] ~`platform/jsonFile` (Read-Modify-Write eines JSON-Dokuments im Adapter) + `platform/device` (ID des Browserprofils)~
 - [x] ~`ui/recent` (zuletzt geöffnet für die Startseite) + `ui/segmented` (Auswahl + Indikator)~
+- [x] ~`markdown.links` (Links im Fließtext)~
+- [x] ~`ui/linkfield` (Links in Textfeldern markieren)~
+- [x] ~`ui/linkfield`: klickbare Ansicht aus dem Eintragsdialog von MD_Calendar~
 
 ### Schnittstellen
 

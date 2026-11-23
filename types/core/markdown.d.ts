@@ -56,6 +56,14 @@ export function keyBlocks(lines: string[], { keys, prose }: {
  */
 export function inline(text: string): MDLInlineToken[];
 /**
+ * The links in plain text such as a note: Markdown links `[label](https://…)` and bare addresses starting with
+ * `https://`, `http://` or `www.` (opened as `https://`), not inside an email address. Punctuation that ends a
+ * sentence after a bare address is not part of it, nor is a closing parenthesis without its opening one in the address.
+ * @param {string} text
+ * @returns {MDLTextLink[]}
+ */
+export function links(text: string): MDLTextLink[];
+/**
  * Text without inline markers, trimmed, for searching and plain display. Also strips the common Markdown
  * variants `__strong__`, `_em_`, `~~strike~~` and images. Text without any marker character is only trimmed.
  * @param {string} text
@@ -100,6 +108,15 @@ export type MDLInlineToken = {
     text: string;
 } | {
     type: "link";
+    text: string;
+    href: string;
+};
+/**
+ * A link found in plain text, at `start` up to `end` (exclusive), with the text to show and the address to open.
+ */
+export type MDLTextLink = {
+    start: number;
+    end: number;
     text: string;
     href: string;
 };

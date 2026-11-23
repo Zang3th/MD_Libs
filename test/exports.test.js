@@ -18,7 +18,7 @@ test("core exports", () => {
     dates: ["addDays", "addPeriod", "dayNumber", "diff", "format", "formatPattern", "fromTime", "isoWeek", "monthStart", "parse", "periodStart", "toTime", "today", "weekStart"],
     history: ["controls", "create", "fingerprint"],
     json: ["read", "stringify"],
-    markdown: ["escapeHtml", "inline", "invalidCharacter", "join", "keyBlocks", "plainText", "split", "trailingTag"],
+    markdown: ["escapeHtml", "inline", "invalidCharacter", "join", "keyBlocks", "links", "plainText", "split", "trailingTag"],
     search: ["create"]
   });
 });
@@ -38,6 +38,7 @@ test("platform exports", () => {
 test("ui exports", () => {
   assert.deepEqual(shape(ui), {
     keymap: ["create", "isEditable", "matches", "parse"],
+    linkfield: ["attach"],
     notifications: ["control", "create", "fullText", "key", "planTrim", "readableText", "text"],
     popover: ["create", "place", "point", "viewport"],
     recent: ["render"],

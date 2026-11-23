@@ -111,7 +111,10 @@ export function keyBlocks(lines, { keys, prose = [] }) {
  * @typedef {{ type: "text" | "code" | "strong" | "strike" | "em", text: string } | { type: "link", text: string, href: string }} MDLInlineToken
  */
 
-const tokenPattern = /(`([^`\n]+)`|\[([^\]\n]+)]\((https?:\/\/[^\s)]+)\)|\*\*([^*\n]+)\*\*|~([^~\n]+)~|\*([^*\n]+)\*)/g;
+/** A Markdown link to an http or https address: label and address as groups. Shared by `inline` and `links`. */
+const markdownLink = /\[([^\]\n]+)]\((https?:\/\/[^\s)]+)\)/.source;
+
+const tokenPattern = new RegExp(`(\`([^\`\\n]+)\`|${markdownLink}|\\*\\*([^*\\n]+)\\*\\*|~([^~\\n]+)~|\\*([^*\\n]+)\\*)`, "g");
 
 /**
  * Inline formatting of a text as tokens; the app renders them.
@@ -134,6 +137,39 @@ export function inline(text) {
   }
   if (offset < text.length) tokens.push({ type: "text", text: text.slice(offset) });
   return tokens;
+}
+
+/**
+ * A link found in plain text, at `start` up to `end` (exclusive), with the text to show and the address to open.
+ * @typedef {{ start: number, end: number, text: string, href: string }} MDLTextLink
+ */
+
+// A bare address starts at no letter, digit, “@” or “.”, so that it is never the tail of a word or an email address.
+const linkPattern = new RegExp(`${markdownLink}|(?<![\\w@.])(?:https?:\\/\\/|www\\.)[^\\s<>"]+`, "gi");
+
+/**
+ * The links in plain text such as a note: Markdown links `[label](https://…)` and bare addresses starting with
+ * `https://`, `http://` or `www.` (opened as `https://`), not inside an email address. Punctuation that ends a
+ * sentence after a bare address is not part of it, nor is a closing parenthesis without its opening one in the address.
+ * @param {string} text
+ * @returns {MDLTextLink[]}
+ */
+export function links(text) {
+  /** @type {MDLTextLink[]} */
+  const result = [];
+  for (const match of text.matchAll(linkPattern)) {
+    const start = match.index || 0;
+    if (match[1] !== undefined) {
+      result.push({ start, end: start + match[0].length, text: match[1], href: match[2] });
+      continue;
+    }
+    let url = match[0];
+    const unbalanced = () => url.endsWith(")") && url.split("(").length < url.split(")").length;
+    while (/[.,;:!?'"]$/.test(url) || unbalanced()) url = url.slice(0, -1);
+    if (!/^(?:https?:\/\/|www\.)./i.test(url)) continue;
+    result.push({ start, end: start + url.length, text: url, href: /^www\./i.test(url) ? `https://${url}` : url });
+  }
+  return result;
 }
 
 // The backtick is escaped so that tools scanning the source do not read a template literal.

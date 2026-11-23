@@ -10,7 +10,7 @@ ES modules, no build, tested with `node:test` only.
 | Layer        | Module          | Purpose                                                                 |
 | ------------ | --------------- | ----------------------------------------------------------------------- |
 | **core**     | `history`       | Undo/redo, saved-state distance, button states                          |
-|              | `markdown`      | Lines, `#Key` blocks, tags, inline, invalid chars                       |
+|              | `markdown`      | Lines, `#Key` blocks, tags, inline, links, invalid chars                |
 |              | `search`        | Fuzzy search with ranking and match positions                           |
 |              | `dates`         | Day keys, arithmetic, periods, ISO weeks, formatting                    |
 |              | `json`          | Versioned JSON documents with a stable key order                        |
@@ -24,6 +24,7 @@ ES modules, no build, tested with `node:test` only.
 | **ui**       | `notifications` | Messages with codes, details and actions                                |
 |              | `tooltips`      | Tooltips for `data-tooltip`                                             |
 |              | `keymap`        | Shortcuts as data, text-field detection                                 |
+|              | `linkfield`     | Links of a text field: marked while editing, clickable view otherwise   |
 |              | `sortable`      | Defaults and drop index for SortableJS                                  |
 |              | `popover`       | Placement and closing of floating elements                              |
 |              | `recent`        | List of recently opened documents for a start page                      |
@@ -126,6 +127,8 @@ markdown.keyBlocks(lines, { keys: ["Start", "Note"], prose: ["Note"] });
 markdown.inline("**bold** and `code`");
 // → tokens: text, code, link, strong, strike, em
 markdown.plainText("**bold**");   // → "bold"
+markdown.links("See www.example.org.");
+// → [{ start: 4, end: 19, text: "www.example.org", href: "https://www.example.org" }]
 markdown.escapeHtml("<b>");       // → "&lt;b&gt;"
 markdown.invalidCharacter("a\nb\u0000");
 // → { index: 3, line: 2, column: 2 }; control characters, DEL, U+FFFD
@@ -348,6 +351,18 @@ keys.bind(["mod+shift+z", "ctrl+y"], redo);
 keys.bind("shift?+f", openSearch, { when: () => !dialogOpen() });
 ```
 
+#### `linkfield`
+
+A text field cannot style parts of its text. A mirror element stacked behind it (same font, padding and wrapping,
+transparent text) repeats the text and wraps each link of `markdown.links` in a span; the field keeps text, caret
+and selection. An optional view over the field shows the text as read while it has no focus, with links that open
+in a new tab; a click on its text edits it with the caret at that place.
+
+```js
+linkfield.attach({ window, field: textarea, mirror, linkClass: "note-link" });
+linkfield.attach({ window, field: textarea, mirror, linkClass: "note-link", view, viewLinkClass: "link" });
+```
+
 #### `sortable`
 
 Shared defaults for SortableJS and the index of a dropped item. The app passes SortableJS in.
@@ -459,7 +474,7 @@ npm run verify
     </tr>
   </thead>
   <tbody>
-    <tr><td>master</td><td>22.11.2026</td><td>2,381</td><td>157</td></tr>
+    <tr><td>master</td><td>23.11.2026</td><td>2,470</td><td>160</td></tr>
     <tr><td>v0.4.0</td><td>12.11.2026</td><td>2,134</td><td>130</td></tr>
   </tbody>
 </table>

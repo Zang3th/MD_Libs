@@ -60,6 +60,16 @@ test("only http and https links are links; unclosed markers stay text", () => {
   assert.deepEqual(markdown.inline("*a\nb*"), [{ type: "text", text: "*a\nb*" }]);
 });
 
+test("links in plain text: Markdown links and bare addresses without trailing punctuation", () => {
+  assert.deepEqual(markdown.links("See [docs](https://e.de/a), https://x.org/p?q=1. (www.y.de) and http://z.de/w_(b)!"), [
+    { start: 4, end: 26, text: "docs", href: "https://e.de/a" },
+    { start: 28, end: 47, text: "https://x.org/p?q=1", href: "https://x.org/p?q=1" },
+    { start: 50, end: 58, text: "www.y.de", href: "https://www.y.de" },
+    { start: 64, end: 81, text: "http://z.de/w_(b)", href: "http://z.de/w_(b)" }
+  ]);
+  assert.deepEqual(markdown.links("no link, xhttps://a.de, https://, www., mail@www.a.de, a.www.b.de or [x](javascript:alert(1))"), []);
+});
+
 test("plain text strips markers of the dialect and common Markdown variants", () => {
   assert.equal(markdown.plainText("  Apply **bold** and `code`  "), "Apply bold and code");
   assert.equal(markdown.plainText("[label](x) ![img](y) __s__ *e* _u_ ~~d~~ ~t~"), "label img s e u d t");
