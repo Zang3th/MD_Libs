@@ -92,6 +92,7 @@ export type MDLSessionEvents = {
     blocked: undefined;
     saved: {
         files: string[];
+        texts: Record<string, string>;
     };
     reloaded: {
         file: string;

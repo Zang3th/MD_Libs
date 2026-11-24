@@ -36,7 +36,7 @@
  *   change: undefined,
  *   conflict: { files: string[] },
  *   blocked: undefined,
- *   saved: { files: string[] },
+ *   saved: { files: string[], texts: Record<string, string> },
  *   reloaded: { file: string },
  *   checkError: { file: string, error: unknown, deleted: boolean }
  * }} MDLSessionEvents
@@ -189,12 +189,14 @@ export function create({
     const position = history?.().position;
     const targets = (order ? order() : writable).filter(name => changed(name) || (force && state[name].external));
     if (!targets.length && !force) {
-      emit("saved", { files: [] });
+      emit("saved", { files: [], texts: {} });
       return;
     }
     revision++;
     /** @type {string[]} */
     const written = [];
+    /** What each written file holds now, so that the app need not read it again. @type {Record<string, string>} */
+    const texts = {};
     let complete = true;
     for (const name of targets) {
       const text = serialize(name);
@@ -207,6 +209,7 @@ export function create({
         file.external = null;
         file.saved = text;
         written.push(name);
+        texts[name] = text;
       } catch (error) {
         if (started !== token) return;
         if (!isConflict(error)) throw error;
@@ -233,7 +236,7 @@ export function create({
     if (!complete) return;
     if (position !== undefined) history?.().markSaved(position);
     emit("change");
-    emit("saved", { files: written });
+    emit("saved", { files: written, texts });
   }
 
   /** @param {boolean} [force] */

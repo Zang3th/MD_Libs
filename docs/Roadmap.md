@@ -85,6 +85,7 @@
 - [x] ~`coalesce`-Schlüssel an Aktionen: direkt aufeinanderfolgende werden ein Schritt, außer dazwischen wurde gespeichert~
 - [x] ~`notifications`: `tone` (`warning`, `success`) für Buttons~
 - [x] ~`storage.ensurePermission` + `storage.probe` brauchen `window` (Timer), fragen immer zuerst, Option `query` entfällt~
+- [x] ~`session`: `saved` übergibt die geschriebenen Texte~
 
 #Archive
 # Archive

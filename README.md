@@ -474,7 +474,7 @@ npm run verify
     </tr>
   </thead>
   <tbody>
-    <tr><td>master</td><td>23.11.2026</td><td>2,470</td><td>160</td></tr>
+    <tr><td>master</td><td>24.11.2026</td><td>2,472</td><td>161</td></tr>
     <tr><td>v0.4.0</td><td>12.11.2026</td><td>2,134</td><td>130</td></tr>
   </tbody>
 </table>

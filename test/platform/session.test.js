@@ -72,6 +72,17 @@ test("save writes changed content once, verifies it and reports it; unchanged co
   assert.equal(s.unsaved, 0);
 });
 
+test("saved hands over the written texts, so that the app need not read the files again", async () => {
+  const { model, s } = await project();
+  /** @type {Record<string, string>[]} */
+  const texts = [];
+  s.on("saved", detail => texts.push(detail.texts));
+  await s.save();
+  model.current["P.md"] = "edited";
+  await s.save();
+  assert.deepEqual(texts, [{}, { "P.md": "edited" }]);
+});
+
 test("a save against an external change reports the conflict without writing; overwrite resolves it", async () => {
   const { disk, model, s, events } = await project();
   model.current["P.md"] = "edited";
