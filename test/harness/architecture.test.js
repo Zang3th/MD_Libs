@@ -72,6 +72,15 @@ test("module rules: exports, dynamic imports, CommonJS, network, namespace and i
   assert.ok(!has(violations, "lib/core/deep"), "paths below an allowed entry point are allowed");
 });
 
+test("module rules: network APIs only in the files the application names", t => {
+  const files = { ...valid, "io/b.js": `${header}fetch("u");\n`, "ui/c.js": `import "lib/ui/x";\n${header}new WebSocket("u");\n` };
+  const checker = architecture.createChecker({ ts, root: fixture(t, files) });
+  checker.checkModules({ domain: ["domain/a.js"], io: ["io/b.js"], ui: ["ui/c.js"] }, { ...rules, network: ["io/b.js"] });
+  const violations = checker.violations();
+  assert.ok(!has(violations, "io/b.js: ARCH-SCRIPTS-001"), "a named file may use the network");
+  assert.ok(has(violations, "ui/c.js: ARCH-SCRIPTS-001 — network APIs"), "every other file may not");
+});
+
 test("wiring: every module once, only modules, layer order, app.js required", t => {
   const wrong = run(fixture(t, { ...valid, "app.js": `import "./ui/c.js";\nimport "./domain/a.js";\nimport "./domain/a.js";\nimport "./missing.js";\nimport "./app.js";\nimport "app-only";\n${header}` }));
   for (const text of ["'domain/a.js' must be imported exactly once, found 2", "'io/b.js' must be imported exactly once, found 0", "import 'missing.js' is not a production module",

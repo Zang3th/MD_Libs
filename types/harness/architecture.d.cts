@@ -7,12 +7,17 @@ export type ModuleRules = {
      *   Packages or entry points a file may import; a specifier matches an entry or a path below it.
      */
     packages: (file: string, layer: "domain" | "io" | "ui" | "app") => string[];
+    /**
+     * Production files that may use network APIs; none by default.
+     */
+    network?: string[];
 };
 /**
  * @typedef {object} ModuleRules
  * @property {string} namespace Global namespace every production module assigns, e.g. "MDManager".
  * @property {(file: string, layer: "domain" | "io" | "ui" | "app") => string[]} packages
  *   Packages or entry points a file may import; a specifier matches an entry or a path below it.
+ * @property {string[]} [network] Production files that may use network APIs; none by default.
  */
 /**
  * Creates a checker for an application in `root`. Violations read `file: RULE — detail`.

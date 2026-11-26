@@ -58,6 +58,7 @@ function isRemote(resource) {
  * @property {string} namespace Global namespace every production module assigns, e.g. "MDManager".
  * @property {(file: string, layer: "domain" | "io" | "ui" | "app") => string[]} packages
  *   Packages or entry points a file may import; a specifier matches an entry or a path below it.
+ * @property {string[]} [network] Production files that may use network APIs; none by default.
  */
 
 /**
@@ -134,7 +135,10 @@ function createChecker({ ts, root }) {
     forbid(production, "ARCH-SCRIPTS-001", [
       [/(?:^|\n)\s*export\s/, `production modules share the window.${rules.namespace} namespace instead of exports`],
       [/\bimport\s*\(/, "dynamic imports are forbidden in production code"],
-      [/\brequire\s*\(/, "CommonJS is forbidden in production code"],
+      [/\brequire\s*\(/, "CommonJS is forbidden in production code"]
+    ]);
+    const network = rules.network || [];
+    forbid(production.filter(file => !network.includes(file)), "ARCH-SCRIPTS-001", [
       [/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b/, "network APIs are forbidden in production code"]
     ]);
     const namespace = new RegExp(`window\\.${rules.namespace}\\s*=\\s*window\\.${rules.namespace}\\s*\\|\\|`);
