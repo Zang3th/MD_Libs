@@ -74,6 +74,7 @@
 - [x] ~`markdown.links` (Links im Fließtext)~
 - [x] ~`ui/linkfield` (Links in Textfeldern markieren)~
 - [x] ~`ui/linkfield`: klickbare Ansicht aus dem Eintragsdialog von MD_Calendar~
+- [x] ~Backdrop-Klicks zentral auslagern~
 
 ### Schnittstellen
 

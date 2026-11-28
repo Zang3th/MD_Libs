@@ -47,6 +47,7 @@ What the README does not state:
 - **session:** one per opened file or folder. A conflict needs changed content, not just a new stamp. A deleted file in a folder is a conflict; a deleted single file is one error message. Read-only files always reload. Written files are read back; `saved` hands over their texts, so that the app need not read them again. Saves during a save coalesce. A session token and a revision drop stale results. Content equal to the saved one counts as saved. MD_Calendar uses `open`, `shouldCheck` (no reload while its dialog is open) and `confirmLeave`; MD_Manager uses none of them.
 - **keymap:** every matching binding runs in binding order; modifiers not named must not be pressed.
 - **popover:** MD_Manager closes its header menus on `click` outside their container and keeps Escape in its keymap, so the statistics guard applies. MD_Calendar closes on `pointerdown` and Escape and refocuses the button.
+- **modal:** MD_Manager closes its editor dialogs on `pointerdown` on the backdrop and its statistics dialog on `click`; MD_Calendar uses `pointerdown` and, in its sync dialog, `when` to stay open while it works.
 - MD_Calendar keeps dragging without lists (multi-day bars, lasso) and its date and time pickers.
 
 ## 5. Tests

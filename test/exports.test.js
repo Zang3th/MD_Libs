@@ -39,6 +39,7 @@ test("ui exports", () => {
   assert.deepEqual(shape(ui), {
     keymap: ["create", "isEditable", "matches", "parse"],
     linkfield: ["attach"],
+    modal: ["closeOnBackdrop"],
     notifications: ["control", "create", "fullText", "key", "planTrim", "readableText", "text"],
     popover: ["create", "place", "point", "viewport"],
     recent: ["render"],

@@ -27,6 +27,7 @@ ES modules, no build, tested with `node:test` only.
 |              | `linkfield`     | Links of a text field: marked while editing, clickable view otherwise   |
 |              | `sortable`      | Defaults and drop index for SortableJS                                  |
 |              | `popover`       | Placement and closing of floating elements                              |
+|              | `modal`         | Closing a modal dialog by a press on its backdrop                       |
 |              | `recent`        | List of recently opened documents for a start page                      |
 |              | `segmented`     | Selection and indicator of a segmented control                          |
 | **harness**  | `build`         | Bundles an app into `dist/app.js`                                       |
@@ -398,6 +399,20 @@ const menu = popover.create({
 button.addEventListener("click", () => menu.toggle());
 ```
 
+#### `modal`
+
+Closes a modal dialog when its backdrop is pressed. The dialog needs no padding, so that only its backdrop is the
+dialog element itself.
+
+```js
+const backdrop = modal.closeOnBackdrop({
+  dialog, close: () => dialog.close(),
+  dismiss: "click",        // default "pointerdown"
+  when: () => !busy         // asked on each press
+});
+backdrop.destroy();
+```
+
 #### `recent`
 
 The list of a start page: rows with icon, name and time, each with a remove button. The app handles the clicks.
@@ -474,7 +489,7 @@ npm run verify
     </tr>
   </thead>
   <tbody>
-    <tr><td>master</td><td>26.11.2026</td><td>2,475</td><td>162</td></tr>
+    <tr><td>master</td><td>28.11.2026</td><td>2,487</td><td>164</td></tr>
     <tr><td>v0.4.0</td><td>12.11.2026</td><td>2,134</td><td>130</td></tr>
   </tbody>
 </table>

@@ -2,7 +2,7 @@
 // `npm run check:types` checks it; every @ts-expect-error fails the check when the types degrade to `any`.
 import { dates, history, markdown, search } from "@zang3th/md-libs/core";
 import { session, storage } from "@zang3th/md-libs/platform";
-import { notifications, popover } from "@zang3th/md-libs/ui";
+import { modal, notifications, popover } from "@zang3th/md-libs/ui";
 
 /** @type {string} */
 export const week = dates.periodStart(dates.today(new Date()), "week");
@@ -47,4 +47,11 @@ export function menu(element) {
   // @ts-expect-error: isOpen is a boolean
   created.isOpen();
   return created;
+}
+
+/** @param {HTMLDialogElement} dialog */
+export function backdrop(dialog) {
+  // @ts-expect-error: the event is pointerdown or click
+  modal.closeOnBackdrop({ dialog, close: () => dialog.close(), dismiss: "mouseup" });
+  return modal.closeOnBackdrop({ dialog, close: () => dialog.close(), when: () => true });
 }
